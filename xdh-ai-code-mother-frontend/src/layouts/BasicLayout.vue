@@ -16,8 +16,7 @@
   </a-layout>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue'
+<script setup lang="ts">
 import { RouterView } from 'vue-router'
 
 import GlobalFooter from './components/GlobalFooter.vue'
@@ -29,34 +28,18 @@ interface MenuItemConfig {
   path: string
 }
 
-export default defineComponent({
-  name: 'BasicLayout',
-  components: {
-    GlobalFooter,
-    GlobalHeader,
-    RouterView,
+const menuItems: MenuItemConfig[] = [
+  {
+    key: 'home',
+    label: '首页',
+    path: '/',
   },
-  setup() {
-    // 使用方式：把所有导航项集中写在这里，再通过 props 传给头部组件。
-    // 优势：布局层统一管理导航配置，头部组件只负责展示，复用性更好。
-    const menuItems: MenuItemConfig[] = [
-      {
-        key: 'home',
-        label: '首页',
-        path: '/',
-      },
-      {
-        key: 'about',
-        label: '关于我们',
-        path: '/about',
-      },
-    ]
-
-    return {
-      menuItems,
-    }
+  {
+    key: 'about',
+    label: '关于我们',
+    path: '/about',
   },
-})
+]
 </script>
 
 <style scoped>

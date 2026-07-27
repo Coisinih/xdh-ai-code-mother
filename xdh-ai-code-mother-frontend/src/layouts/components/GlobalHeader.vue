@@ -17,15 +17,22 @@
     </a-menu>
 
     <div class="global-header__actions">
-      <a-button type="primary">登录</a-button>
+      <div v-if="loginUserStore.loginUser.id">
+        <a-avatar :src="loginUserStore.loginUser.userAvatar" />
+        {{ loginUserStore.loginUser.userName ?? '无名' }}
+      </div>
+      <div v-else>
+        <a-button type="primary">登录</a-button>
+      </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent } from 'vue'
-import type { PropType } from 'vue'
+<script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+
+import { useLoginUserStore } from '@/stores/loginUser.ts'
 
 interface MenuItemConfig {
   key: string
@@ -33,47 +40,34 @@ interface MenuItemConfig {
   path: string
 }
 
-export default defineComponent({
-  name: 'GlobalHeader',
-  components: {
-    RouterLink,
+const props = withDefaults(
+  defineProps<{
+    menuItems: MenuItemConfig[]
+  }>(),
+  {
+    menuItems: () => [],
   },
-  props: {
-    menuItems: {
-      type: Array as PropType<MenuItemConfig[]>,
-      default: () => [],
-    },
-  },
-  setup(props) {
-    const route = useRoute()
-    const router = useRouter()
+)
 
-    // 使用方式：把 computed 结果直接绑定给 a-menu 的 selectedKeys。
-    // 优势：当前路由变化时会自动重新计算，高亮状态始终和页面保持同步。
-    const selectedKeys = computed(() => {
-      const matchedItem =
-        props.menuItems.find((item) => route.path === item.path) ??
-        props.menuItems.find((item) => item.path !== '/' && route.path.startsWith(item.path))
+const route = useRoute()
+const router = useRouter()
+const loginUserStore = useLoginUserStore()
 
-      return matchedItem ? [matchedItem.key] : []
-    })
+const selectedKeys = computed(() => {
+  const matchedItem =
+    props.menuItems.find((item) => route.path === item.path) ??
+    props.menuItems.find((item) => item.path !== '/' && route.path.startsWith(item.path))
 
-    // 使用方式：Menu 点击后只拿到 key，我们通过配置反查目标路由并跳转。
-    // 优势：模板层不需要写死跳转地址，后续接入权限菜单或接口菜单时更容易扩展。
-    const handleMenuClick = ({ key }: { key: string }) => {
-      const targetItem = props.menuItems.find((item) => item.key === key)
-
-      if (targetItem && targetItem.path !== route.path) {
-        router.push(targetItem.path)
-      }
-    }
-
-    return {
-      selectedKeys,
-      handleMenuClick,
-    }
-  },
+  return matchedItem ? [matchedItem.key] : []
 })
+
+const handleMenuClick = ({ key }: { key: string }) => {
+  const targetItem = props.menuItems.find((item) => item.key === key)
+
+  if (targetItem && targetItem.path !== route.path) {
+    router.push(targetItem.path)
+  }
+}
 </script>
 
 <style scoped>
