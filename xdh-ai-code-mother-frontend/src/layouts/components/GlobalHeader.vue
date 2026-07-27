@@ -22,7 +22,7 @@
         {{ loginUserStore.loginUser.userName ?? '无名' }}
       </div>
       <div v-else>
-        <a-button type="primary">登录</a-button>
+        <a-button type="primary" href="/user/login">登录</a-button>
       </div>
     </div>
   </div>
@@ -72,9 +72,10 @@ const handleMenuClick = ({ key }: { key: string }) => {
 
 <style scoped>
 .global-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 24px;
+  gap: 16px 24px;
   width: 100%;
   padding: 0 32px;
 }
@@ -84,7 +85,6 @@ const handleMenuClick = ({ key }: { key: string }) => {
   align-items: center;
   gap: 12px;
   min-width: 0;
-  flex-shrink: 0;
   padding: 18px 0;
 }
 
@@ -102,11 +102,13 @@ const handleMenuClick = ({ key }: { key: string }) => {
   font-weight: 600;
   letter-spacing: 0.01em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .global-header__menu {
-  min-width: fit-content;
-  margin-left: auto;
+  min-width: 0;
+  justify-self: end;
   background: transparent;
   border-bottom: none;
 }
@@ -120,14 +122,12 @@ const handleMenuClick = ({ key }: { key: string }) => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-shrink: 0;
-  min-width: fit-content;
+  min-width: max-content;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .global-header {
-    flex-wrap: wrap;
-    justify-content: center;
+    grid-template-columns: 1fr;
     gap: 12px;
     padding: 12px 16px;
   }
@@ -139,20 +139,20 @@ const handleMenuClick = ({ key }: { key: string }) => {
   }
 
   .global-header__menu {
-    order: 3;
     width: 100%;
-    margin-left: 0;
+    justify-self: stretch;
   }
 
   :deep(.global-header__menu.ant-menu-horizontal) {
-    justify-content: flex-start;
+    justify-content: center;
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
   }
 
   .global-header__actions {
-    margin-left: auto;
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -161,11 +161,7 @@ const handleMenuClick = ({ key }: { key: string }) => {
     font-size: 0.95rem;
     white-space: normal;
     text-align: center;
-  }
-
-  .global-header__actions {
-    width: 100%;
-    justify-content: center;
+    overflow: visible;
   }
 }
 </style>
