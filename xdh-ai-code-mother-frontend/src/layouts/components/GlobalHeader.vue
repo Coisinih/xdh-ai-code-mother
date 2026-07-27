@@ -18,8 +18,20 @@
 
     <div class="global-header__actions">
       <div v-if="loginUserStore.loginUser.id">
-        <a-avatar :src="loginUserStore.loginUser.userAvatar" />
-        {{ loginUserStore.loginUser.userName ?? '无名' }}
+        <a-dropdown>
+          <a-space>
+            <a-avatar :src="loginUserStore.loginUser.userAvatar" />
+            {{ loginUserStore.loginUser.userName ?? '无名' }}
+          </a-space>
+          <template #overlay>
+            <a-menu>
+              <a-menu-item key="logout" @click="handleLogout">
+                <LogoutOutlined />
+                退出登录
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
       </div>
       <div v-else>
         <a-button type="primary" href="/user/login">登录</a-button>
@@ -31,8 +43,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-
+import { LogoutOutlined } from '@ant-design/icons-vue'
 import { useLoginUserStore } from '@/stores/loginUser.ts'
+import { userLogout } from '@/api/userController.ts'
+import { message } from 'ant-design-vue'
 
 interface MenuItemConfig {
   key: string
@@ -66,6 +80,22 @@ const handleMenuClick = ({ key }: { key: string }) => {
 
   if (targetItem && targetItem.path !== route.path) {
     router.push(targetItem.path)
+  }
+}
+
+const handleLogout = async () => {
+  // 1.调用用户注销接口
+  const res = await userLogout()
+  if (res.data.code === 0) {
+    // 2.清除用户信息
+    loginUserStore.setLoginUser({
+      userName: '未登入',
+    })
+    message.success('退出登入成功')
+    // 3.跳转到登录页
+    router.push('/user/login')
+  } else {
+    message.error('退出登入失败，' + res.data.message)
   }
 }
 </script>

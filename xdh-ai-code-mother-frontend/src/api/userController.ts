@@ -50,13 +50,9 @@ export async function getLoginUser(options?: { [key: string]: any }) {
 }
 
 /** 此处后端没有提供注释 POST /user/get/logout */
-export async function userLogout(body: API.HttpServletRequest, options?: { [key: string]: any }) {
+export async function userLogout(options?: { [key: string]: any }) {
   return request<API.BaseResponseBoolean>('/user/get/logout', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    data: body,
     ...(options || {}),
   })
 }
