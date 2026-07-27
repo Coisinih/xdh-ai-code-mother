@@ -67,7 +67,6 @@ const menuItems: MenuItemConfig[] = [
 
 .basic-layout__content-inner {
   width: 100%;
-  max-width: 1200px;
   margin: 0 auto;
 }
 
