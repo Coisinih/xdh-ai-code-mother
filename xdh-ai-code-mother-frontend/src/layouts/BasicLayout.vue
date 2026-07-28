@@ -1,7 +1,7 @@
 <template>
   <a-layout class="basic-layout">
     <a-layout-header class="basic-layout__header">
-      <GlobalHeader :menu-items="menuItems" />
+      <GlobalHeader />
     </a-layout-header>
 
     <a-layout-content class="basic-layout__content">
@@ -22,24 +22,6 @@ import { RouterView } from 'vue-router'
 import GlobalFooter from './components/GlobalFooter.vue'
 import GlobalHeader from './components/GlobalHeader.vue'
 
-interface MenuItemConfig {
-  key: string
-  label: string
-  path: string
-}
-
-const menuItems: MenuItemConfig[] = [
-  {
-    key: 'home',
-    label: '首页',
-    path: '/',
-  },
-  {
-    key: 'about',
-    label: '关于我们',
-    path: '/about',
-  },
-]
 </script>
 
 <style scoped>

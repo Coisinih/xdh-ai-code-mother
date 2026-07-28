@@ -32,10 +32,11 @@ import { reactive } from 'vue'
 import { useLoginUserStore } from '@/stores/loginUser.ts'
 import { userLogin } from '@/api/userController.ts'
 import { message } from 'ant-design-vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const loginUserStore = useLoginUserStore()
 const router = useRouter()
+const route = useRoute()
 
 const formState = reactive<API.UserLoginRequest>({
   userAccount: '',
@@ -48,7 +49,8 @@ const doSubmit = async (values: any) => {
     await loginUserStore.fetchLoginUser()
     message.success('登入成功')
     // 登入成功，跳转到首页
-    router.replace('/')
+    const redirect = route.query.redirect as string
+    router.replace(redirect || '/')
   } else {
     message.error('登入失败，' + res.data.message)
   }

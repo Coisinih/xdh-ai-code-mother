@@ -1,20 +1,18 @@
 <template>
   <div class="global-header">
     <RouterLink class="global-header__brand" to="/">
-      <img alt="咸蛋黄 AI" class="global-header__logo" src="@/assets/logo.png" />
+      <img alt="咸蛋黄AI" class="global-header__logo" src="@/assets/logo.png" />
       <span class="global-header__title">咸蛋黄AI零代码应用生成平台</span>
     </RouterLink>
 
     <a-menu
       class="global-header__menu"
       mode="horizontal"
+      :disabled-overflow="true"
+      :items="menuItems"
       :selected-keys="selectedKeys"
       @click="handleMenuClick"
-    >
-      <a-menu-item v-for="item in menuItems" :key="item.key">
-        {{ item.label }}
-      </a-menu-item>
-    </a-menu>
+    />
 
     <div class="global-header__actions">
       <div v-if="loginUserStore.loginUser.id">
@@ -41,47 +39,65 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, h } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { LogoutOutlined } from '@ant-design/icons-vue'
-import { useLoginUserStore } from '@/stores/loginUser.ts'
+import { type MenuProps, message } from 'ant-design-vue'
+
 import { userLogout } from '@/api/userController.ts'
-import { message } from 'ant-design-vue'
+import { useLoginUserStore } from '@/stores/loginUser.ts'
 
-interface MenuItemConfig {
+type HeaderMenuItem = {
   key: string
-  label: string
-  path: string
+  label: string | ReturnType<typeof h>
+  path?: string
 }
-
-const props = withDefaults(
-  defineProps<{
-    menuItems: MenuItemConfig[]
-  }>(),
-  {
-    menuItems: () => [],
-  },
-)
 
 const route = useRoute()
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
 
-const selectedKeys = computed(() => {
-  const matchedItem =
-    props.menuItems.find((item) => route.path === item.path) ??
-    props.menuItems.find((item) => item.path !== '/' && route.path.startsWith(item.path))
+const originItems: HeaderMenuItem[] = [
+  {
+    key: '/',
+    label: '首页',
+    path: '/',
+  },
+  {
+    key: '/admin/userManage',
+    label: '用户管理',
+    path: '/admin/userManage',
+  },
+  {
+    key: 'others',
+    label: h('a', { href: 'https://www.baidu.com', target: '_blank' }, '其他'),
+  },
+]
 
-  return matchedItem ? [matchedItem.key] : []
-})
+const filterMenus = (menus: HeaderMenuItem[]) => {
+  return menus.filter((menu) => {
+    if (menu.path?.startsWith('/admin')) {
+      const loginUser = loginUserStore.loginUser
+      if (!loginUser || loginUser.userRole !== 'admin') {
+        return false
+      }
+    }
 
-const handleMenuClick = ({ key }: { key: string }) => {
-  const targetItem = props.menuItems.find((item) => item.key === key)
+    return true
+  })
+}
 
-  if (targetItem && targetItem.path !== route.path) {
-    router.push(targetItem.path)
+const menuItems = computed<MenuProps['items']>(() => filterMenus(originItems))
+
+const handleMenuClick: MenuProps['onClick'] = (event) => {
+  const key = event.key as string
+
+  if (key.startsWith('/')) {
+    router.push(key)
   }
 }
+
+const selectedKeys = computed(() => [route.path])
 
 const handleLogout = async () => {
   // 1.调用用户注销接口
