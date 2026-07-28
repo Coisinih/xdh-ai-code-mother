@@ -79,7 +79,7 @@ public class UserController {
      * @return 注销结果
      */
     @PostMapping("/get/logout")
-    public BaseResponse<Boolean> userLogout(@RequestBody HttpServletRequest request) {
+    public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
         boolean result = userService.userLogout(request);
         return ResultUtils.success(result);
     }
