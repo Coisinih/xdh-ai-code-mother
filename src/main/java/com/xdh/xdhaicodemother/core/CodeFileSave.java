@@ -6,7 +6,6 @@ import cn.hutool.core.util.StrUtil;
 import com.xdh.xdhaicodemother.ai.model.HtmlCodeResult;
 import com.xdh.xdhaicodemother.ai.model.MultiFileCodeResult;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
-import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -17,7 +16,7 @@ import java.nio.charset.StandardCharsets;
  * @author huanglina
  * date：  2026/7/28
  */
-@Service
+@Deprecated
 public class CodeFileSave {
     // 文件保存的根目录 tmp/code_output
     private static final String FILE_SAVE_ROOT_PATH = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "code_output";
