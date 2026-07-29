@@ -12,7 +12,7 @@ import java.util.Map;
  * 自定义代码生成器
  */
 public class MyBatisCodeGenerator {
-    private static final String[] TABLE_NAMES = {"user"};
+    private static final String[] TABLE_NAMES = {"app"};
 
     public static void main(String[] args) {
         // 读取yaml数据库配置信息
