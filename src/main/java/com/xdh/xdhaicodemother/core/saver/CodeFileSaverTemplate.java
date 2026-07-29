@@ -1,7 +1,6 @@
 package com.xdh.xdhaicodemother.core.saver;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
@@ -25,11 +24,11 @@ public abstract class CodeFileSaverTemplate<T> {
      * @param result 代码结果对象
      * @return 保存的目录文件
      */
-    public final File saveCode(T result) {
+    public final File saveCode(T result, Long appId) {
         // 1.输入校验
         doInputCheck(result);
         // 2.生成唯一路径
-        String basePathDir = createDirPath();
+        String basePathDir = createDirPath(appId);
 
         // 3.保存文件
         saveCodeToFile(basePathDir, result);
@@ -51,9 +50,9 @@ public abstract class CodeFileSaverTemplate<T> {
      *
      * @return 目录路径
      */
-    private String createDirPath() {
+    private String createDirPath(Long appId) {
         // 目录名:html_xxxxx
-        String uniqueDirName = StrUtil.format("{}_{}", getCodeType(), IdUtil.getSnowflakeNextIdStr());
+        String uniqueDirName = StrUtil.format("{}_{}", getCodeType(), appId);
         // 目录路径:tmp/code_output/html_xxxxx
         String dirPath = FILE_SAVE_ROOT_PATH + File.separator + uniqueDirName;
         // 创建目录

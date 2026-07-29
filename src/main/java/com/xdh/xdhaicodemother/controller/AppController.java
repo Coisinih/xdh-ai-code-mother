@@ -2,6 +2,7 @@ package com.xdh.xdhaicodemother.controller;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.xdh.xdhaicodemother.annotation.AuthCheck;
@@ -18,15 +19,21 @@ import com.xdh.xdhaicodemother.model.dto.app.AppUserUpdateRequest;
 import com.xdh.xdhaicodemother.model.entity.App;
 import com.xdh.xdhaicodemother.model.entity.User;
 import com.xdh.xdhaicodemother.model.enums.AppConstant;
+import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
 import com.xdh.xdhaicodemother.model.vo.AppVO;
 import com.xdh.xdhaicodemother.service.AppService;
 import com.xdh.xdhaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 应用 控制层。
@@ -43,6 +50,42 @@ public class AppController {
 
     @Resource
     private UserService userService;
+
+    /**
+     * 应用聊天生成代码（流式 SSE）
+     *
+     * @param appId   应用 ID
+     * @param message 用户消息
+     * @param request 请求对象
+     * @return 生成结果流
+     */
+    @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
+                                                       @RequestParam String message,
+                                                       HttpServletRequest request) {
+        // 参数校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
+        ThrowUtils.throwIf(CharSequenceUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务生成代码（流式）
+        Flux<String> res = appService.chatToGenCode(message, appId, loginUser);
+        // 将输出转为 ServerSentEvent<String> 格式
+        return res.map(chunk -> {
+                    // 将输出封装为 json 对象，防止空格丢失
+                    Map<String, String> wrapper = Map.of("d", chunk);
+                    return ServerSentEvent.<String>builder()
+                            .data(JSONUtil.formatJsonStr(JSONUtil.toJsonStr(wrapper)))
+                            .build();
+                })
+                .concatWith(Mono.just(
+                        ServerSentEvent.<String>builder()
+                                .event("done")
+                                .data("")
+                                .build()
+                ));
+    }
+
 
     /**
      * 创建应用
@@ -67,6 +110,8 @@ public class AppController {
         app.setUserId(loginUser.getId());
         // 应用名称暂时为 initPrompt 的前 12 位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+        // 暂时设置为 单html 生成
+        app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
 
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);

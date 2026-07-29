@@ -4,7 +4,9 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.xdh.xdhaicodemother.model.dto.app.AppQueryRequest;
 import com.xdh.xdhaicodemother.model.entity.App;
+import com.xdh.xdhaicodemother.model.entity.User;
 import com.xdh.xdhaicodemother.model.vo.AppVO;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -20,4 +22,6 @@ public interface AppService extends IService<App> {
     List<AppVO> getAppVOList(List<App> appList);
 
     QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest);
+
+    Flux<String> chatToGenCode(String userMessage, Long appId, User loginUser);
 }

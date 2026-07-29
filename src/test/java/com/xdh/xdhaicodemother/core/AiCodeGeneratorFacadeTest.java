@@ -10,8 +10,6 @@ import reactor.core.publisher.Flux;
 import java.io.File;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 @SpringBootTest
 class AiCodeGeneratorFacadeTest {
     @Resource
@@ -20,24 +18,24 @@ class AiCodeGeneratorFacadeTest {
     @Test
     void generateAndSaveCode() {
         // 原生 HTML 模式
-        File file = aiCodeGeneratorFacade.generateAndSaveCode(CodeGenTypeEnum.HTML, "帮我生成一个登入页面，代码不超过20行。");
+        File file = aiCodeGeneratorFacade.generateAndSaveCode(CodeGenTypeEnum.HTML, "帮我生成一个登入页面，代码不超过20行。", 1L);
         Assertions.assertNotNull(file);
 
         // 原生 多文件模式
-        File file1 = aiCodeGeneratorFacade.generateAndSaveCode(CodeGenTypeEnum.HTML, "帮我生成一个登入页面，代码总量不超过50行。");
+        File file1 = aiCodeGeneratorFacade.generateAndSaveCode(CodeGenTypeEnum.HTML, "帮我生成一个登入页面，代码总量不超过50行。", 1L);
         Assertions.assertNotNull(file1);
     }
 
     @Test
     void generateAndSaveCodeStream() {
         // 原生 HTML 模式
-        Flux<String> res = aiCodeGeneratorFacade.generateAndSaveCodeStream(CodeGenTypeEnum.HTML, "帮我生成一个登入页面，代码不超过20行。");
+        Flux<String> res = aiCodeGeneratorFacade.generateAndSaveCodeStream(CodeGenTypeEnum.HTML, "帮我生成一个登入页面，代码不超过20行。", 1L);
         List<String> block = res.collectList().block();
         Assertions.assertNotNull(block);
         Assertions.assertNotNull(String.join("", block));
 
         // 原生 多文件模式
-        Flux<String> res1 = aiCodeGeneratorFacade.generateAndSaveCodeStream(CodeGenTypeEnum.MULTI_FILE, "帮我生成一个登入页面，代码总量不超过50行。");
+        Flux<String> res1 = aiCodeGeneratorFacade.generateAndSaveCodeStream(CodeGenTypeEnum.MULTI_FILE, "帮我生成一个登入页面，代码总量不超过50行。", 1L);
         List<String> block1 = res1.collectList().block();
         Assertions.assertNotNull(block1);
         Assertions.assertNotNull(String.join("", block1));
