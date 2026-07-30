@@ -1,6 +1,6 @@
 package com.xdh.xdhaicodemother.model.enums;
 
-public interface AppConstant {
+public interface AppConstantEnum {
 
     /**
      * 精选应用的优先级

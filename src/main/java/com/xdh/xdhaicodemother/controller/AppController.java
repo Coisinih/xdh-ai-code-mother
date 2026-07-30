@@ -12,13 +12,10 @@ import com.xdh.xdhaicodemother.common.ResultUtils;
 import com.xdh.xdhaicodemother.constant.UserConstant;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
 import com.xdh.xdhaicodemother.exception.ThrowUtils;
-import com.xdh.xdhaicodemother.model.dto.app.AppAddRequest;
-import com.xdh.xdhaicodemother.model.dto.app.AppAdminUpdateRequest;
-import com.xdh.xdhaicodemother.model.dto.app.AppQueryRequest;
-import com.xdh.xdhaicodemother.model.dto.app.AppUserUpdateRequest;
+import com.xdh.xdhaicodemother.model.dto.app.*;
 import com.xdh.xdhaicodemother.model.entity.App;
 import com.xdh.xdhaicodemother.model.entity.User;
-import com.xdh.xdhaicodemother.model.enums.AppConstant;
+import com.xdh.xdhaicodemother.model.enums.AppConstantEnum;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
 import com.xdh.xdhaicodemother.model.vo.AppVO;
 import com.xdh.xdhaicodemother.service.AppService;
@@ -84,6 +81,25 @@ public class AppController {
                                 .data("")
                                 .build()
                 ));
+    }
+
+    /**
+     * 应用部署
+     *
+     * @param appDeployRequest 部署请求
+     * @param request          请求
+     * @return 部署 URL
+     */
+    @PostMapping("/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appDeployRequest == null, ErrorCode.PARAMS_ERROR);
+        Long appId = appDeployRequest.getAppId();
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务部署应用
+        String deployUrl = appService.deployApp(appId, loginUser);
+        return ResultUtils.success(deployUrl);
     }
 
 
@@ -222,7 +238,7 @@ public class AppController {
         ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询 20 个应用");
         long pageNum = appQueryRequest.getPageNum();
         // 只查询精选的应用
-        appQueryRequest.setPriority(AppConstant.GOOD_APP_PRIORITY);
+        appQueryRequest.setPriority(AppConstantEnum.GOOD_APP_PRIORITY);
         QueryWrapper queryWrapper = appService.getQueryWrapper(appQueryRequest);
         // 分页查询
         Page<App> appPage = appService.page(Page.of(pageNum, pageSize), queryWrapper);

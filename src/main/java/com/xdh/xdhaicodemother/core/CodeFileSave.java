@@ -43,7 +43,7 @@ public class CodeFileSave {
     public static File saveMultiFileCodeResult(MultiFileCodeResult multiFileCodeResult) {
         String dirPath = createDirPath(CodeGenTypeEnum.MULTI_FILE);
         writeToFile(dirPath, "index.html", multiFileCodeResult.getHtmlCode());
-        writeToFile(dirPath, "style.ccs", multiFileCodeResult.getCssCode());
+        writeToFile(dirPath, "style.css", multiFileCodeResult.getCssCode());
         writeToFile(dirPath, "script.js", multiFileCodeResult.getJsCode());
         return new File(dirPath);
     }

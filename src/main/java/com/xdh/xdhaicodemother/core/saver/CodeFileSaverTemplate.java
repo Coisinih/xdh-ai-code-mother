@@ -3,6 +3,7 @@ package com.xdh.xdhaicodemother.core.saver;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.xdh.xdhaicodemother.constant.AppConstant;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
 import com.xdh.xdhaicodemother.exception.ThrowUtils;
 
@@ -16,7 +17,7 @@ import java.nio.charset.StandardCharsets;
  * date：  2026/7/29
  */
 public abstract class CodeFileSaverTemplate<T> {
-    private static final String FILE_SAVE_ROOT_PATH = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "code_output";
+    private static final String FILE_SAVE_ROOT_PATH = AppConstant.CODE_OUTPUT_ROOT_DIR;
 
     /**
      * 模板方法，保存代码的标准流程

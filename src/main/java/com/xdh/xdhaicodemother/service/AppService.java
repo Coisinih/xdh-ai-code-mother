@@ -17,11 +17,13 @@ import java.util.List;
  * @since 2026-07-29
  */
 public interface AppService extends IService<App> {
+    Flux<String> chatToGenCode(String userMessage, Long appId, User loginUser);
+
+    String deployApp(Long appId, User loginUser);
+
     AppVO getAppVO(App app);
 
     List<AppVO> getAppVOList(List<App> appList);
 
     QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest);
-
-    Flux<String> chatToGenCode(String userMessage, Long appId, User loginUser);
 }
