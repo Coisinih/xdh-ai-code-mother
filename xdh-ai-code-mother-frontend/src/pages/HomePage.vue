@@ -60,14 +60,7 @@
         <div class="section-card">
           <div class="section-card__header">
             <div>
-              <h2 class="section-card__title">我的应用</h2>
-              <p class="section-card__desc">
-                {{
-                  loginUserStore.loginUser.id
-                    ? '继续优化、查看和管理你创建的应用。'
-                    : '登录后可查看和管理自己的应用。'
-                }}
-              </p>
+              <h2 class="section-card__title">我的作品</h2>
             </div>
 
             <div v-if="loginUserStore.loginUser.id" class="section-card__search">
@@ -104,9 +97,7 @@
               <a-pagination
                 v-model:current="mySearchParams.pageNum"
                 v-model:page-size="mySearchParams.pageSize"
-                :page-size-options="pageSizeOptions"
                 :total="myAppsTotal"
-                show-size-changer
                 show-less-items
                 @change="handleMyPageChange"
               />
@@ -125,8 +116,7 @@
         <div class="section-card">
           <div class="section-card__header">
             <div>
-              <h2 class="section-card__title">精选应用</h2>
-              <p class="section-card__desc">浏览平台精选案例，查看生成效果和创意方向。</p>
+              <h2 class="section-card__title">精选案例</h2>
             </div>
 
             <div class="section-card__search">
@@ -155,12 +145,11 @@
           </a-spin>
 
           <div class="section-card__pagination">
+            <div>共 {{ featuredAppsTotal }} 个案例</div>
             <a-pagination
               v-model:current="featuredSearchParams.pageNum"
               v-model:page-size="featuredSearchParams.pageSize"
-              :page-size-options="pageSizeOptions"
               :total="featuredAppsTotal"
-              show-size-changer
               show-less-items
               @change="handleFeaturedPageChange"
             />
@@ -174,7 +163,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'HomePage' })
 
-import { onActivated, onDeactivated, onMounted, reactive, ref, watch } from 'vue'
+import { nextTick, onActivated, onDeactivated, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
 import { Modal, message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
@@ -183,19 +172,14 @@ import AppCard from '@/components/app/AppCard.vue'
 import { addApp, deleteApp, listGoodAppVoByPage, listMyAppVoByPage } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getAppIdString, resolveAppDeployUrl } from '@/utils/app'
+import { consumeHomeRefreshNeeded } from '@/utils/homeRefresh'
 
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
 
-const examplePrompts = [
-  '波普风电商页面',
-  '企业网站',
-  '电商运营后台',
-  '暗黑话题社区',
-]
+const examplePrompts = ['波普风电商页面', '企业网站', '电商运营后台', '暗黑话题社区']
 
-const HOME_PAGE_SIZE = 10
-const pageSizeOptions = ['10', '20']
+const HOME_PAGE_SIZE = 6
 
 const prompt = ref('')
 const creatingApp = ref(false)
@@ -268,7 +252,9 @@ const handleCreateApp = async () => {
   }
   if (!loginUserStore.loginUser.id) {
     message.warning('请先登录后再创建应用')
-    await router.push(`/user/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`)
+    await router.push(
+      `/user/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`,
+    )
     return
   }
 
@@ -377,28 +363,44 @@ const handleFeaturedPageChange = (page: number, pageSize: number) => {
 }
 
 const goToLogin = async () => {
-  await router.push(`/user/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`)
+  await router.push(
+    `/user/login?redirect=${encodeURIComponent(router.currentRoute.value.fullPath)}`,
+  )
 }
 
 watch(
   () => loginUserStore.loginUser.id,
   () => {
     void loadMyApps()
-  }
+  },
 )
 
 let savedScrollY = 0
 
-onDeactivated(() => {
-  savedScrollY = window.scrollY || document.documentElement.scrollTop
-})
-
-onActivated(() => {
+const restoreHomeScroll = () => {
   if (savedScrollY > 0) {
     setTimeout(() => {
       window.scrollTo(0, savedScrollY)
     }, 0)
   }
+}
+
+const refreshHomeDataIfNeeded = async () => {
+  if (!consumeHomeRefreshNeeded()) {
+    return
+  }
+
+  await Promise.allSettled([loadMyApps(), loadFeaturedApps()])
+  await nextTick()
+}
+
+onDeactivated(() => {
+  savedScrollY = window.scrollY || document.documentElement.scrollTop
+})
+
+onActivated(async () => {
+  await refreshHomeDataIfNeeded()
+  restoreHomeScroll()
 })
 
 onMounted(() => {
@@ -467,7 +469,7 @@ onMounted(() => {
   text-align: left;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.95);
-  border-radius: 28px;
+  border-radius: 12px;
   box-shadow:
     0 18px 50px rgba(15, 23, 42, 0.08),
     0 2px 0 rgba(255, 255, 255, 0.8) inset;
@@ -542,7 +544,7 @@ onMounted(() => {
   font-size: 0.92rem;
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
+  border-radius: 12px;
   cursor: pointer;
   transition:
     transform 0.2s ease,
@@ -573,8 +575,19 @@ onMounted(() => {
   padding: 28px 30px 24px;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 36px 36px 28px 28px;
+  border-radius: 12px;
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.06);
+}
+
+.home-page :deep(.ant-input-affix-wrapper),
+.home-page :deep(.ant-input),
+.home-page :deep(.ant-input-search .ant-input-group .ant-input-affix-wrapper),
+.home-page :deep(.ant-input-search .ant-input-group .ant-input-group-addon .ant-btn),
+.home-page :deep(.ant-pagination-options-size-changer.ant-select .ant-select-selector),
+.home-page :deep(.ant-pagination .ant-pagination-item),
+.home-page :deep(.ant-pagination .ant-pagination-prev .ant-pagination-item-link),
+.home-page :deep(.ant-pagination .ant-pagination-next .ant-pagination-item-link) {
+  border-radius: 12px;
 }
 
 .section-card__header {
@@ -592,19 +605,16 @@ onMounted(() => {
   font-weight: 700;
 }
 
-.section-card__desc {
-  margin: 8px 0 0;
-  color: var(--app-text-secondary);
-}
-
 .section-card__search {
   width: min(100%, 300px);
 }
 
 .section-card__pagination {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   margin-top: 28px;
+  gap: 12px;
 }
 
 .section-card__empty-auth {
@@ -645,7 +655,7 @@ onMounted(() => {
 
   .section-card {
     padding: 22px;
-    border-radius: 28px;
+    border-radius: 12px;
   }
 
   .app-grid {
@@ -670,7 +680,7 @@ onMounted(() => {
 
   .hero-section__composer {
     padding: 16px;
-    border-radius: 22px;
+    border-radius: 12px;
   }
 
   .home-page__panels {

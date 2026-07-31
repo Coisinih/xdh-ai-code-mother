@@ -124,6 +124,7 @@ import { useRouter } from 'vue-router'
 
 import { adminDeleteApp, adminListAppVoByPage, adminUpdateApp } from '@/api/appController'
 import { formatDateTime } from '@/utils/app'
+import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 
 const GOOD_APP_PRIORITY = 99
 const DEFAULT_APP_PRIORITY = 0
@@ -277,6 +278,7 @@ const toggleFeaturedStatus = async (record: API.AppVO) => {
   })
 
   if (res.data.code === 0) {
+    markHomeRefreshNeeded()
     message.success(successText)
     await loadRecords()
     return
@@ -299,6 +301,7 @@ const deleteRecord = (record: API.AppVO) => {
     async onOk() {
       const res = await adminDeleteApp({ id: record.id })
       if (res.data.code === 0) {
+        markHomeRefreshNeeded()
         message.success('删除成功')
         if (records.value.length === 1 && (searchParams.pageNum ?? 1) > 1) {
           searchParams.pageNum = (searchParams.pageNum ?? 1) - 1

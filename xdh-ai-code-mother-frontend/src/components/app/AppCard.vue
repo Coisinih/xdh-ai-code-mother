@@ -82,7 +82,7 @@ const hasDeployedWork = computed(() => Boolean(getAppIdString(props.app.deployKe
   overflow: hidden;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(223, 232, 255, 0.9);
-  border-radius: 28px;
+  border-radius: 12px;
   cursor: pointer;
   box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
   transition:
@@ -125,7 +125,7 @@ const hasDeployedWork = computed(() => Boolean(getAppIdString(props.app.deployKe
 .app-card__placeholder-logo {
   width: 72px;
   height: 72px;
-  border-radius: 22px;
+  border-radius: 12px;
 }
 
 .app-card__badges {

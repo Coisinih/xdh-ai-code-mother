@@ -5,11 +5,15 @@
         <div>
           <h1 class="app-edit-page__title">应用信息编辑</h1>
           <p class="app-edit-page__desc">
-            {{ isAdmin ? '管理员可修改应用名称、封面和优先级。' : '普通用户目前仅可修改自己的应用名称。' }}
+            {{
+              isAdmin
+                ? '管理员可修改应用名称、封面和优先级。'
+                : '普通用户目前仅可修改自己的应用名称。'
+            }}
           </p>
         </div>
         <a-space>
-          <a-button @click="goBack">返回</a-button>
+          <a-button @click="goBack">返回首页</a-button>
           <a-button type="primary" :loading="saving" @click="handleSubmit">保存修改</a-button>
         </a-space>
       </div>
@@ -31,7 +35,11 @@
               placeholder="请输入封面图片 URL"
             />
             <div class="app-edit-page__field-tip">
-              {{ isAdmin ? '管理员可填写封面图地址，用于首页和管理页展示。' : '普通用户暂不支持修改封面。' }}
+              {{
+                isAdmin
+                  ? '管理员可填写封面图片地址，用于首页和管理页展示。'
+                  : '普通用户暂不支持修改封面。'
+              }}
             </div>
           </a-form-item>
 
@@ -44,7 +52,11 @@
               style="width: 100%"
             />
             <div class="app-edit-page__field-tip">
-              {{ isAdmin ? '精选应用建议设置为 99。' : '普通用户暂不支持修改优先级。' }}
+              {{
+                isAdmin
+                  ? '精选应用建议设置为 99。'
+                  : '普通用户暂不支持修改优先级。'
+              }}
             </div>
           </a-form-item>
 
@@ -64,7 +76,9 @@
       <div class="app-edit-page__preview-header">
         <div>
           <h2 class="app-edit-page__preview-title">效果预览</h2>
-          <p class="app-edit-page__preview-desc">如果应用已经生成网页，这里会展示当前预览。</p>
+          <p class="app-edit-page__preview-desc">
+            如果应用已经生成网页，这里会展示当前预览。
+          </p>
         </div>
         <a-button v-if="previewUrl" type="default" @click="openPreview">新窗口查看</a-button>
       </div>
@@ -90,6 +104,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { adminGetAppVoById, adminUpdateApp, getAppVoById, updateApp } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { formatDateTime, resolveAppPreviewUrl, type AppIdentifier } from '@/utils/app'
+import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 
 type AppEditFormState = Omit<API.AppAdminUpdateRequest, 'id'> & {
   id?: AppIdentifier
@@ -199,6 +214,7 @@ const handleSubmit = async () => {
         priority: formState.priority ?? 0,
       })
       if (res.data.code === 0) {
+        markHomeRefreshNeeded()
         message.success('更新成功')
         await loadAppDetail()
         return
@@ -212,6 +228,7 @@ const handleSubmit = async () => {
       appName,
     })
     if (res.data.code === 0) {
+      markHomeRefreshNeeded()
       message.success('更新成功')
       await loadAppDetail()
       return
@@ -229,7 +246,7 @@ const openPreview = () => {
 }
 
 const goBack = () => {
-  router.back()
+  void router.push('/')
 }
 
 onMounted(() => {

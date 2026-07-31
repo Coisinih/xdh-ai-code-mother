@@ -1,6 +1,6 @@
 <template>
-  <a-layout :class="['basic-layout', isHomePage ? 'basic-layout--home' : '']">
-    <a-layout-header v-if="!isImmersiveLayout" class="basic-layout__header">
+  <a-layout :class="['basic-layout', isHomePage ? 'basic-layout--home' : '']" :style="layoutStyle">
+    <a-layout-header ref="headerRef" class="basic-layout__header">
       <GlobalHeader />
     </a-layout-header>
 
@@ -12,22 +12,32 @@
       ]"
     >
       <div class="basic-layout__content-inner">
-        <RouterView v-slot="{ Component }">
-          <keep-alive include="HomePage">
-            <component :is="Component" />
-          </keep-alive>
-        </RouterView>
+        <div class="basic-layout__route-view">
+          <RouterView v-slot="{ Component }">
+            <keep-alive include="HomePage">
+              <component :is="Component" />
+            </keep-alive>
+          </RouterView>
+        </div>
       </div>
     </a-layout-content>
 
-    <a-layout-footer v-if="!isImmersiveLayout" class="basic-layout__footer">
+    <a-layout-footer ref="footerRef" class="basic-layout__footer">
       <GlobalFooter />
     </a-layout-footer>
   </a-layout>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  type ComponentPublicInstance,
+  type CSSProperties,
+} from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 
 import GlobalFooter from './components/GlobalFooter.vue'
@@ -36,6 +46,59 @@ import GlobalHeader from './components/GlobalHeader.vue'
 const route = useRoute()
 const isImmersiveLayout = computed(() => route.meta.layout === 'immersive')
 const isHomePage = computed(() => route.path === '/')
+
+const headerRef = ref<ComponentPublicInstance | HTMLElement | null>(null)
+const footerRef = ref<ComponentPublicInstance | HTMLElement | null>(null)
+const headerHeight = ref(0)
+const footerHeight = ref(0)
+
+let resizeObserver: ResizeObserver | undefined
+
+const resolveElement = (target: ComponentPublicInstance | HTMLElement | null) => {
+  if (!target) {
+    return null
+  }
+  if (target instanceof HTMLElement) {
+    return target
+  }
+  return (target.$el as HTMLElement | undefined) ?? null
+}
+
+const updateLayoutHeights = () => {
+  headerHeight.value = resolveElement(headerRef.value)?.offsetHeight ?? 0
+  footerHeight.value = resolveElement(footerRef.value)?.offsetHeight ?? 0
+}
+
+const layoutStyle = computed<CSSProperties>(() => ({
+  '--layout-header-height': `${headerHeight.value}px`,
+  '--layout-footer-height': `${footerHeight.value}px`,
+}))
+
+onMounted(async () => {
+  await nextTick()
+  updateLayoutHeights()
+
+  resizeObserver = new ResizeObserver(() => {
+    updateLayoutHeights()
+  })
+
+  const headerElement = resolveElement(headerRef.value)
+  const footerElement = resolveElement(footerRef.value)
+
+  if (headerElement) {
+    resizeObserver.observe(headerElement)
+  }
+  if (footerElement) {
+    resizeObserver.observe(footerElement)
+  }
+
+  window.addEventListener('resize', updateLayoutHeights)
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  window.removeEventListener('resize', updateLayoutHeights)
+})
 </script>
 
 <style scoped>
@@ -69,6 +132,10 @@ const isHomePage = computed(() => route.path === '/')
 }
 
 .basic-layout__content {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   flex: 1;
   padding: 32px 20px 104px;
   background: #ffffff !important;
@@ -80,13 +147,32 @@ const isHomePage = computed(() => route.path === '/')
 }
 
 .basic-layout__content--immersive {
+  height: calc(100vh - var(--layout-header-height, 0px) - var(--layout-footer-height, 0px));
+  min-height: calc(100vh - var(--layout-header-height, 0px) - var(--layout-footer-height, 0px));
+  max-height: calc(100vh - var(--layout-header-height, 0px) - var(--layout-footer-height, 0px));
   padding: 0;
   background: transparent !important;
+  overflow: hidden;
 }
 
 .basic-layout__content-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
   width: 100%;
   margin: 0 auto;
+  overflow: hidden;
+}
+
+.basic-layout__route-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .basic-layout__footer {

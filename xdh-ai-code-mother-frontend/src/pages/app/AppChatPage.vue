@@ -16,10 +16,10 @@
           type="primary"
           size="large"
           :loading="deploying"
-          :disabled="!appDetail.id"
+          :disabled="!canDeployApp"
           @click="handleDeploy"
         >
-          部署
+          {{ hasDeployedApp ? '重新部署' : '部署' }}
         </a-button>
       </div>
     </header>
@@ -39,13 +39,10 @@
               v-if="item.role === 'assistant'"
               :size="36"
               class="chat-message__avatar"
-              src="@/assets/logo.png"
+              :src="aiAssistantAvatar"
             />
 
             <div class="chat-message__bubble">
-              <div class="chat-message__role">
-                {{ item.role === 'user' ? '你' : 'AI 助手' }}
-              </div>
               <div class="chat-message__content">
                 <MarkdownContent
                   v-if="item.role === 'assistant' && item.content"
@@ -56,6 +53,15 @@
                 </template>
               </div>
             </div>
+
+            <a-avatar
+              v-if="item.role === 'user'"
+              :size="36"
+              class="chat-message__avatar"
+              :src="loginUserStore.loginUser.userAvatar"
+            >
+              {{ (loginUserStore.loginUser.userName || 'U').slice(0, 1) }}
+            </a-avatar>
           </div>
 
           <a-empty
@@ -105,11 +111,12 @@
         <div class="preview-panel__header">
           <div>
             <h2 class="preview-panel__title">网页预览</h2>
-            <p class="preview-panel__desc">{{ previewDescription }}</p>
           </div>
           <a-space v-if="showPreview && previewUrl">
             <a-button @click="openPreviewUrl">新窗口打开</a-button>
-            <a-button v-if="canEditAppInfo" type="link" @click="openEditPage">编辑应用信息</a-button>
+            <a-button v-if="canEditAppInfo" type="link" @click="openEditPage">
+              编辑应用信息
+            </a-button>
           </a-space>
         </div>
 
@@ -134,17 +141,53 @@
         </div>
       </section>
     </main>
+
+    <a-modal
+      v-model:open="deploySuccessModalOpen"
+      :footer="null"
+      centered
+      title="部署成功"
+      width="520px"
+    >
+      <div class="deploy-success-modal">
+        <CheckCircleFilled class="deploy-success-modal__icon" />
+        <h3 class="deploy-success-modal__headline">网站部署成功!</h3>
+        <p class="deploy-success-modal__desc">
+          你的网站已经成功部署，可以通过以下链接访问:
+        </p>
+
+        <div class="deploy-success-modal__url-box">
+          <span class="deploy-success-modal__url-text">{{ deployUrl }}</span>
+          <a-button
+            type="text"
+            class="deploy-success-modal__copy-btn"
+            :disabled="!deployUrl"
+            @click="copyDeployUrl"
+          >
+            <template #icon>
+              <CopyOutlined />
+            </template>
+          </a-button>
+        </div>
+
+        <div class="deploy-success-modal__actions">
+          <a-button type="primary" @click="openDeployUrl">访问网站</a-button>
+          <a-button @click="deploySuccessModalOpen = false">关闭</a-button>
+        </div>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { LeftOutlined } from '@ant-design/icons-vue'
+import { CheckCircleFilled, CopyOutlined, LeftOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import MarkdownContent from '@/components/chat/MarkdownContent.vue'
 import { deployApp, getAppVoById } from '@/api/appController'
+import aiAssistantAvatar from '@/assets/img_1.png'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { streamChatToGenCode } from '@/utils/chatStream'
 import {
@@ -154,6 +197,7 @@ import {
   resolveAppPreviewUrl,
   type AppIdentifier,
 } from '@/utils/app'
+import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 import 'highlight.js/styles/github.css'
 
 type ChatMessage = {
@@ -179,6 +223,7 @@ const inputMessage = ref('')
 const isStreaming = ref(false)
 const deploying = ref(false)
 const deployUrl = ref('')
+const deploySuccessModalOpen = ref(false)
 const showPreview = ref(false)
 const previewLoading = ref(false)
 const previewFrameKey = ref(0)
@@ -206,20 +251,9 @@ const canEditAppInfo = computed(() => {
   return isOwnApp.value || loginUserStore.loginUser.userRole === 'admin'
 })
 const canChatOnApp = computed(() => isOwnApp.value)
+const canDeployApp = computed(() => Boolean(appDetail.id) && isOwnApp.value)
+const hasDeployedApp = computed(() => Boolean(appDetail.deployKey?.trim()))
 const chatBlockedReason = '无法在别人的作品下对话哦~'
-
-const previewDescription = computed(() => {
-  if (previewLoading.value) {
-    return '已收到 done 事件，正在获取静态资源。'
-  }
-  if (showPreview.value && previewUrl.value) {
-    return '已收到 done 事件，右侧展示的是最新生成结果。'
-  }
-  if (isStreaming.value) {
-    return '代码生成中，done 事件返回前不会加载右侧预览。'
-  }
-  return '代码生成完成并且静态资源可访问后，这里才会显示网页效果。'
-})
 
 const getAutoPromptStorageKey = (id: AppIdentifier) => `app:autoPrompt:${getAppIdString(id)}`
 const getChatStateStorageKey = (id: AppIdentifier) => `app:chatState:${getAppIdString(id)}`
@@ -279,7 +313,7 @@ const scrollMessagesToBottom = async () => {
 
 const loadAppDetail = async () => {
   if (!appId.value) {
-    message.error('应用 id 无效')
+    message.error('��用 id 无效')
     await router.replace('/')
     return false
   }
@@ -461,7 +495,7 @@ const handleTextareaEnter = (event: KeyboardEvent) => {
 }
 
 const handleDeploy = async () => {
-  if (!appDetail.id) {
+  if (!appDetail.id || !canDeployApp.value) {
     return
   }
 
@@ -470,8 +504,10 @@ const handleDeploy = async () => {
     const res = await deployApp({ appId: getAppRequestId(appDetail.id as AppIdentifier) })
     if (res.data.code === 0 && res.data.data) {
       deployUrl.value = res.data.data
+      await loadAppDetail()
       persistChatPageState()
-      message.success('部署成功')
+      markHomeRefreshNeeded()
+      deploySuccessModalOpen.value = true
       return
     }
     message.error(res.data.message || '部署失败')
@@ -489,6 +525,19 @@ const openPreviewUrl = () => {
 const openDeployUrl = () => {
   if (deployUrl.value) {
     window.open(deployUrl.value, '_blank', 'noopener,noreferrer')
+  }
+}
+
+const copyDeployUrl = async () => {
+  if (!deployUrl.value) {
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(deployUrl.value)
+    message.success('部署网址已复制')
+  } catch {
+    message.error('复制失败，请手动复制')
   }
 }
 
@@ -561,11 +610,15 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .app-chat-page {
+  box-sizing: border-box;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 20px;
-  height: 100vh;
-  padding: 22px;
+  gap: 0;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  padding: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(114, 255, 227, 0.2), transparent 28%),
@@ -575,13 +628,14 @@ onBeforeUnmount(() => {
 
 .app-chat-page__header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
   padding: 18px 22px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 26px;
+  border-radius: 0;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
 }
 
@@ -613,19 +667,24 @@ onBeforeUnmount(() => {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1.35fr);
-  gap: 20px;
+  gap: 2px;
+  height: 0;
+  max-height: 100%;
   min-height: 0;
+  padding: 0 0;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
 .app-chat-page__panel {
   display: flex;
   flex-direction: column;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 28px;
+  border-radius: 0;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
 }
 
@@ -659,7 +718,7 @@ onBeforeUnmount(() => {
 
 .chat-message__bubble {
   max-width: min(86%, 640px);
-  padding: 16px 18px;
+  padding: 10px 18px;
   word-break: break-word;
   border-radius: 20px;
 }
@@ -672,13 +731,6 @@ onBeforeUnmount(() => {
 .chat-message--user .chat-message__bubble {
   color: #ffffff;
   background: linear-gradient(135deg, #1f7aff, #14b8a6);
-}
-
-.chat-message__role {
-  margin-bottom: 8px;
-  font-size: 0.86rem;
-  font-weight: 600;
-  opacity: 0.88;
 }
 
 .chat-message__content {
@@ -695,6 +747,7 @@ onBeforeUnmount(() => {
 }
 
 .app-chat-page__composer {
+  flex-shrink: 0;
   padding: 20px 22px 22px;
   border-top: 1px solid rgba(220, 230, 255, 0.9);
 }
@@ -722,6 +775,7 @@ onBeforeUnmount(() => {
 
 .preview-panel__header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -759,13 +813,72 @@ onBeforeUnmount(() => {
 }
 
 .preview-panel__iframe {
+  display: block;
+  flex: 1;
   width: 100%;
   height: 100%;
   min-height: 0;
-  overflow: auto;
   background: #ffffff;
   border: 1px solid rgba(220, 230, 255, 0.9);
   border-radius: 22px;
+}
+
+.deploy-success-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px 0;
+  text-align: center;
+}
+
+.deploy-success-modal__icon {
+  margin-top: 8px;
+  color: #52c41a;
+  font-size: 48px;
+}
+
+.deploy-success-modal__headline {
+  margin: 18px 0 10px;
+  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.deploy-success-modal__desc {
+  margin: 0 0 20px;
+  color: #6b7280;
+  line-height: 1.7;
+}
+
+.deploy-success-modal__url-box {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 10px 0 14px;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+}
+
+.deploy-success-modal__url-text {
+  flex: 1;
+  overflow: hidden;
+  color: #1f2937;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deploy-success-modal__copy-btn {
+  flex-shrink: 0;
+}
+
+.deploy-success-modal__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
 }
 
 @media (max-width: 1280px) {
@@ -777,7 +890,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .app-chat-page {
-    padding: 14px;
+    padding: 0;
   }
 
   .app-chat-page__header,
@@ -803,6 +916,11 @@ onBeforeUnmount(() => {
 
   .chat-message__bubble {
     max-width: 100%;
+  }
+
+  .deploy-success-modal__actions {
+    width: 100%;
+    flex-direction: column;
   }
 }
 </style>
