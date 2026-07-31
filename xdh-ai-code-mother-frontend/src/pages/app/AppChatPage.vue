@@ -47,7 +47,13 @@
                 {{ item.role === 'user' ? '你' : 'AI 助手' }}
               </div>
               <div class="chat-message__content">
-                {{ item.content || (item.status === 'streaming' ? '正在生成中...' : '') }}
+                <MarkdownContent
+                  v-if="item.role === 'assistant' && item.content"
+                  :content="item.content"
+                />
+                <template v-else>
+                  {{ item.content || (item.status === 'streaming' ? '正在生成中...' : '') }}
+                </template>
               </div>
             </div>
           </div>
@@ -137,6 +143,7 @@ import { LeftOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import MarkdownContent from '@/components/chat/MarkdownContent.vue'
 import { deployApp, getAppVoById } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { streamChatToGenCode } from '@/utils/chatStream'
@@ -147,6 +154,7 @@ import {
   resolveAppPreviewUrl,
   type AppIdentifier,
 } from '@/utils/app'
+import 'highlight.js/styles/github.css'
 
 type ChatMessage = {
   id: string
@@ -652,7 +660,6 @@ onBeforeUnmount(() => {
 .chat-message__bubble {
   max-width: min(86%, 640px);
   padding: 16px 18px;
-  white-space: pre-wrap;
   word-break: break-word;
   border-radius: 20px;
 }
@@ -677,6 +684,14 @@ onBeforeUnmount(() => {
 .chat-message__content {
   font-size: 1rem;
   line-height: 1.8;
+}
+
+.chat-message--user .chat-message__content {
+  white-space: pre-wrap;
+}
+
+.chat-message--assistant .chat-message__content {
+  white-space: normal;
 }
 
 .app-chat-page__composer {

@@ -1,5 +1,5 @@
 <template>
-  <a-layout class="basic-layout">
+  <a-layout :class="['basic-layout', isHomePage ? 'basic-layout--home' : '']">
     <a-layout-header v-if="!isImmersiveLayout" class="basic-layout__header">
       <GlobalHeader />
     </a-layout-header>
@@ -8,6 +8,7 @@
       :class="[
         'basic-layout__content',
         isImmersiveLayout ? 'basic-layout__content--immersive' : '',
+        isHomePage ? 'basic-layout__content--home' : '',
       ]"
     >
       <div class="basic-layout__content-inner">
@@ -34,11 +35,24 @@ import GlobalHeader from './components/GlobalHeader.vue'
 
 const route = useRoute()
 const isImmersiveLayout = computed(() => route.meta.layout === 'immersive')
+const isHomePage = computed(() => route.path === '/')
 </script>
 
 <style scoped>
 .basic-layout {
   min-height: 100vh;
+  background: #ffffff !important;
+}
+
+.basic-layout--home {
+  background-image: linear-gradient(to top, #a8edea 0%, #fed6e3 100%) !important;
+  background-attachment: fixed;
+}
+
+.basic-layout :deep(.ant-layout),
+.basic-layout :deep(.ant-layout-content),
+.basic-layout :deep(.ant-layout-footer) {
+  background: transparent !important;
 }
 
 .basic-layout__header {
@@ -48,19 +62,26 @@ const isImmersiveLayout = computed(() => route.meta.layout === 'immersive')
   height: auto;
   padding: 0;
   line-height: normal;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--app-border);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  background: #ffffff !important;
+  backdrop-filter: none;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: none;
 }
 
 .basic-layout__content {
   flex: 1;
   padding: 32px 20px 104px;
+  background: #ffffff !important;
+}
+
+.basic-layout__content--home {
+  padding: 0 0 104px;
+  background: transparent !important;
 }
 
 .basic-layout__content--immersive {
   padding: 0;
+  background: transparent !important;
 }
 
 .basic-layout__content-inner {
@@ -81,6 +102,10 @@ const isImmersiveLayout = computed(() => route.meta.layout === 'immersive')
 @media (max-width: 768px) {
   .basic-layout__content {
     padding: 20px 16px 112px;
+  }
+
+  .basic-layout__content--home {
+    padding: 0 0 104px;
   }
 
   .basic-layout__content--immersive {

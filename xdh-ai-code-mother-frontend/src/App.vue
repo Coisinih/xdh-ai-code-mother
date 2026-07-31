@@ -19,8 +19,8 @@ const locale = zhCN
 
 <style>
 :root {
-  --app-bg: #f5fbff;
-  --app-surface: rgba(255, 255, 255, 0.9);
+  --app-bg: #e8f7ff;
+  --app-surface: rgba(255, 255, 255, 0.96);
   --app-border: rgba(220, 230, 255, 0.9);
   --app-text: #172033;
   --app-text-secondary: #64748b;
@@ -35,16 +35,18 @@ html,
 body,
 #app {
   min-height: 100%;
+  background: transparent;
 }
 
 body {
   margin: 0;
   color: var(--app-text);
   font-family: 'Avenir Next', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(120, 255, 228, 0.16), transparent 28%),
-    radial-gradient(circle at top right, rgba(122, 150, 255, 0.18), transparent 24%),
-    var(--app-bg);
+  background: #ffffff;
+}
+
+#app {
+  min-height: 100vh;
 }
 
 a {

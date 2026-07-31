@@ -32,15 +32,17 @@
         </a-dropdown>
       </div>
       <div v-else>
-        <a-button type="primary" @click="router.push('/user/login')">登录</a-button>
+        <a-button class="global-header__login" type="primary" @click="router.push('/user/login')">
+          登录
+        </a-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { LogoutOutlined } from '@ant-design/icons-vue'
+import { computed, h } from 'vue'
+import { LogoutOutlined, HomeOutlined } from '@ant-design/icons-vue'
 import { type MenuProps, message } from 'ant-design-vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -76,12 +78,20 @@ const originItems: HeaderMenuItem[] = [
 ]
 
 const menuItems = computed<MenuProps['items']>(() =>
-  originItems.filter((menu) => {
-    if (menu.path?.startsWith('/admin')) {
-      return loginUserStore.loginUser.userRole === 'admin'
-    }
-    return true
-  })
+  originItems
+    .filter((menu) => {
+      // 如果是 /admin 菜单，只有管理员才能展示
+      if (menu.path?.startsWith('/admin')) {
+        return loginUserStore.loginUser.userRole === 'admin'
+      }
+      // 其他菜单正常显示
+      return true
+    })
+    .map((menu) => ({
+      key: menu.key,
+      label: menu.label,
+      icon: menu.key === '/' ? h(HomeOutlined) : undefined, // 给主页加上图标
+    })),
 )
 
 const handleMenuClick: MenuProps['onClick'] = (event) => {
@@ -118,7 +128,7 @@ const handleLogout = async () => {
 <style scoped>
 .global-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px 24px;
   width: 100%;
@@ -153,7 +163,7 @@ const handleLogout = async () => {
 
 .global-header__menu {
   min-width: 0;
-  justify-self: end;
+  justify-self: start;
   background: transparent;
   border-bottom: none;
 }
@@ -168,6 +178,20 @@ const handleLogout = async () => {
   align-items: center;
   justify-content: flex-end;
   min-width: max-content;
+}
+
+.global-header__login {
+  height: 40px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #1e293b;
+  box-shadow: none;
+}
+
+.global-header__login:hover,
+.global-header__login:focus {
+  background: #0f172a !important;
 }
 
 @media (max-width: 1024px) {

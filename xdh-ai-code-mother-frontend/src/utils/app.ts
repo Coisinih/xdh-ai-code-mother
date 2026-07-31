@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 
 export const API_BASE_URL = 'http://localhost:8123/api'
-export const APP_PAGE_SIZE = 20
+export const APP_PAGE_SIZE = 10
 export const DEFAULT_CODE_GEN_TYPE = 'vue'
 export type AppIdentifier = string | number
 
