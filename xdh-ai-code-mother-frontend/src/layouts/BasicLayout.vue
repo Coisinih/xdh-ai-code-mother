@@ -1,27 +1,39 @@
 <template>
   <a-layout class="basic-layout">
-    <a-layout-header class="basic-layout__header">
+    <a-layout-header v-if="!isImmersiveLayout" class="basic-layout__header">
       <GlobalHeader />
     </a-layout-header>
 
-    <a-layout-content class="basic-layout__content">
+    <a-layout-content
+      :class="[
+        'basic-layout__content',
+        isImmersiveLayout ? 'basic-layout__content--immersive' : '',
+      ]"
+    >
       <div class="basic-layout__content-inner">
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <keep-alive include="HomePage">
+            <component :is="Component" />
+          </keep-alive>
+        </RouterView>
       </div>
     </a-layout-content>
 
-    <a-layout-footer class="basic-layout__footer">
+    <a-layout-footer v-if="!isImmersiveLayout" class="basic-layout__footer">
       <GlobalFooter />
     </a-layout-footer>
   </a-layout>
 </template>
 
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 
 import GlobalFooter from './components/GlobalFooter.vue'
 import GlobalHeader from './components/GlobalHeader.vue'
 
+const route = useRoute()
+const isImmersiveLayout = computed(() => route.meta.layout === 'immersive')
 </script>
 
 <style scoped>
@@ -47,6 +59,10 @@ import GlobalHeader from './components/GlobalHeader.vue'
   padding: 32px 20px 104px;
 }
 
+.basic-layout__content--immersive {
+  padding: 0;
+}
+
 .basic-layout__content-inner {
   width: 100%;
   margin: 0 auto;
@@ -65,6 +81,10 @@ import GlobalHeader from './components/GlobalHeader.vue'
 @media (max-width: 768px) {
   .basic-layout__content {
     padding: 20px 16px 112px;
+  }
+
+  .basic-layout__content--immersive {
+    padding: 0;
   }
 }
 </style>

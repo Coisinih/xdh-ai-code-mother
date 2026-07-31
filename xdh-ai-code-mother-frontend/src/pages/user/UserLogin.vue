@@ -1,38 +1,49 @@
 <template>
-  <div class="userLogin">
-    <h2 class="title">咸蛋黄 AI 应用生成平台 - 用户登入</h2>
-    <div class="desc">不写一行代码，生成完整应用</div>
-    <a-form :model="formState" name="basic" autocomplete="off" @finish="doSubmit">
-      <a-form-item name="userAccount" :rules="[{ required: true, message: '请输入账号' }]">
-        <a-input v-model:value="formState.userAccount" placeholder="请输入账号" />
-      </a-form-item>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h2 class="auth-card__title">一句话生所想</h2>
+      <p class="auth-card__desc">登录后即可创建应用、持续对话优化并管理自己的作品。</p>
 
-      <a-form-item
-        name="userPassword"
-        :rules="[
-          { required: true, message: '请输入密码' },
-          { min: 8, message: '密码长度不能小于8位' },
-        ]"
-      >
-        <a-input-password v-model:value="formState.userPassword" placeholder="请输入密码" />
-      </a-form-item>
+      <a-form :model="formState" autocomplete="off" layout="vertical" @finish="doSubmit">
+        <a-form-item
+          label="账号"
+          name="userAccount"
+          :rules="[{ required: true, message: '请输入账号' }]"
+        >
+          <a-input v-model:value="formState.userAccount" placeholder="请输入账号" />
+        </a-form-item>
 
-      <div class="tips">
-        没有账号？
-        <RouterLink to="/user/register">去注册</RouterLink>
-      </div>
-      <a-form-item>
-        <a-button type="primary" html-type="submit" style="width: 100%">登入</a-button>
-      </a-form-item>
-    </a-form>
+        <a-form-item
+          label="密码"
+          name="userPassword"
+          :rules="[
+            { required: true, message: '请输入密码' },
+            { min: 8, message: '密码长度不能小于 8 位' },
+          ]"
+        >
+          <a-input-password v-model:value="formState.userPassword" placeholder="请输入密码" />
+        </a-form-item>
+
+        <div class="auth-card__tips">
+          没有账号？
+          <RouterLink to="/user/register">立即注册</RouterLink>
+        </div>
+
+        <a-form-item>
+          <a-button block html-type="submit" type="primary">登录</a-button>
+        </a-form-item>
+      </a-form>
+    </div>
   </div>
 </template>
+
 <script lang="ts" setup>
 import { reactive } from 'vue'
-import { useLoginUserStore } from '@/stores/loginUser.ts'
-import { userLogin } from '@/api/userController.ts'
 import { message } from 'ant-design-vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+
+import { userLogin } from '@/api/userController'
+import { useLoginUserStore } from '@/stores/loginUser'
 
 const loginUserStore = useLoginUserStore()
 const router = useRouter()
@@ -42,42 +53,55 @@ const formState = reactive<API.UserLoginRequest>({
   userAccount: '',
   userPassword: '',
 })
-const doSubmit = async (values: any) => {
+
+const doSubmit = async (values: API.UserLoginRequest) => {
   const res = await userLogin(values)
-  // 登入成功，将登入状态保存到全局状态中
   if (res.data.code === 0 && res.data.data) {
     await loginUserStore.fetchLoginUser()
-    message.success('登入成功')
-    // 登入成功，跳转到首页
-    const redirect = route.query.redirect as string
-    router.replace(redirect || '/')
-  } else {
-    message.error('登入失败，' + res.data.message)
+    message.success('登录成功')
+    const redirect = route.query.redirect as string | undefined
+    await router.replace(redirect || '/')
+    return
   }
+
+  message.error(`登录失败，${res.data.message}`)
 }
 </script>
 
-<style>
-.userLogin {
-  max-width: 360px;
-  margin: 0 auto;
+<style scoped>
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 40px;
 }
 
-.title {
-  margin-bottom: 16px;
+.auth-card {
+  width: min(100%, 420px);
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(220, 230, 255, 0.9);
+  border-radius: 28px;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+}
+
+.auth-card__title {
+  margin: 0 0 12px;
   text-align: center;
+  font-size: 1.9rem;
+  font-weight: 700;
 }
 
-.desc {
-  margin-bottom: 16px;
+.auth-card__desc {
+  margin: 0 0 24px;
+  color: var(--app-text-secondary);
   text-align: center;
-  color: #999;
+  line-height: 1.7;
 }
 
-.tips {
-  margin-bottom: 16px;
+.auth-card__tips {
+  margin-bottom: 18px;
+  color: var(--app-text-secondary);
   text-align: right;
-  color: #999;
   font-size: 13px;
 }
 </style>

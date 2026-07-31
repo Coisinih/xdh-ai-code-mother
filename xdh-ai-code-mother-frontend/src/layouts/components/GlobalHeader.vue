@@ -1,8 +1,8 @@
 <template>
   <div class="global-header">
     <RouterLink class="global-header__brand" to="/">
-      <img alt="咸蛋黄AI" class="global-header__logo" src="@/assets/logo.png" />
-      <span class="global-header__title">咸蛋黄AI零代码应用生成平台</span>
+      <img alt="一句话生所想" class="global-header__logo" src="@/assets/logo.png" />
+      <span class="global-header__title">一句话生所想 · AI 应用生成平台</span>
     </RouterLink>
 
     <a-menu
@@ -19,7 +19,7 @@
         <a-dropdown>
           <a-space>
             <a-avatar :src="loginUserStore.loginUser.userAvatar" />
-            {{ loginUserStore.loginUser.userName ?? '无名' }}
+            {{ loginUserStore.loginUser.userName ?? '无名用户' }}
           </a-space>
           <template #overlay>
             <a-menu>
@@ -32,24 +32,24 @@
         </a-dropdown>
       </div>
       <div v-else>
-        <a-button type="primary" href="/user/login">登录</a-button>
+        <a-button type="primary" @click="router.push('/user/login')">登录</a-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed } from 'vue'
 import { LogoutOutlined } from '@ant-design/icons-vue'
 import { type MenuProps, message } from 'ant-design-vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { userLogout } from '@/api/userController.ts'
-import { useLoginUserStore } from '@/stores/loginUser.ts'
+import { userLogout } from '@/api/userController'
+import { useLoginUserStore } from '@/stores/loginUser'
 
 type HeaderMenuItem = {
   key: string
-  label: string | ReturnType<typeof h>
+  label: string
   path?: string
 }
 
@@ -69,50 +69,49 @@ const originItems: HeaderMenuItem[] = [
     path: '/admin/userManage',
   },
   {
-    key: 'others',
-    label: h('a', { href: 'https://www.baidu.com', target: '_blank' }, '其他'),
+    key: '/admin/appManage',
+    label: '应用管理',
+    path: '/admin/appManage',
   },
 ]
 
-const filterMenus = (menus: HeaderMenuItem[]) => {
-  return menus.filter((menu) => {
+const menuItems = computed<MenuProps['items']>(() =>
+  originItems.filter((menu) => {
     if (menu.path?.startsWith('/admin')) {
-      const loginUser = loginUserStore.loginUser
-      if (!loginUser || loginUser.userRole !== 'admin') {
-        return false
-      }
+      return loginUserStore.loginUser.userRole === 'admin'
     }
-
     return true
   })
-}
-
-const menuItems = computed<MenuProps['items']>(() => filterMenus(originItems))
+)
 
 const handleMenuClick: MenuProps['onClick'] = (event) => {
   const key = event.key as string
-
   if (key.startsWith('/')) {
-    router.push(key)
+    void router.push(key)
   }
 }
 
-const selectedKeys = computed(() => [route.path])
+const selectedKeys = computed(() => {
+  if (route.path.startsWith('/admin/appManage')) {
+    return ['/admin/appManage']
+  }
+  if (route.path.startsWith('/admin/userManage')) {
+    return ['/admin/userManage']
+  }
+  return ['/']
+})
 
 const handleLogout = async () => {
-  // 1.调用用户注销接口
   const res = await userLogout()
   if (res.data.code === 0) {
-    // 2.清除用户信息
     loginUserStore.setLoginUser({
-      userName: '未登入',
+      userName: '未登录',
     })
-    message.success('退出登入成功')
-    // 3.跳转到登录页
-    router.push('/user/login')
-  } else {
-    message.error('退出登入失败，' + res.data.message)
+    message.success('退出登录成功')
+    await router.push('/user/login')
+    return
   }
+  message.error(`退出登录失败，${res.data.message}`)
 }
 </script>
 

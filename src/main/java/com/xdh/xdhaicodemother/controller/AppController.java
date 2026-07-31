@@ -127,7 +127,7 @@ public class AppController {
         // 应用名称暂时为 initPrompt 的前 12 位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
         // 暂时设置为 单html 生成
-        app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
+        app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
 
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);

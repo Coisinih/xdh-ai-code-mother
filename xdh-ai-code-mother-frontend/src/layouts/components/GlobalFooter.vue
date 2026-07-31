@@ -1,5 +1,5 @@
 <template>
-  <div class="global-footer">咸蛋黄 AI 零代码应用生成平台 by 咸蛋黄</div>
+  <div class="global-footer">一句话生所想 · AI 应用生成平台</div>
 </template>
 
 <script setup lang="ts"></script>
