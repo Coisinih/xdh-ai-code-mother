@@ -54,12 +54,10 @@ import { getAppAuthorName, getAppDisplayName, getAppIdString } from '@/utils/app
 const props = withDefaults(
   defineProps<{
     app: API.AppVO
-    badge?: string
     canEdit?: boolean
     canDelete?: boolean
   }>(),
   {
-    badge: '',
     canEdit: false,
     canDelete: false,
   },
@@ -126,15 +124,6 @@ const hasDeployedWork = computed(() => Boolean(getAppIdString(props.app.deployKe
   width: 72px;
   height: 72px;
   border-radius: 12px;
-}
-
-.app-card__badges {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .app-card__overlay {

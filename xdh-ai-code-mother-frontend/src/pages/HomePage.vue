@@ -5,18 +5,18 @@
         <h1 class="hero-section__title">
           <span>一句话</span>
           <img alt="logo" class="hero-section__title-logo" src="@/assets/logo.png" />
-          <span>呈所想</span>
+          <span>生所想</span>
         </h1>
-        <p class="hero-section__subtitle">与 AI 对话轻松创建应用和网站</p>
+        <p class="hero-section__subtitle">用 AI 对话轻松创建应用和网站</p>
 
         <div class="hero-section__composer">
           <a-textarea
             v-model:value="prompt"
             :auto-size="{ minRows: 4, maxRows: 7 }"
+            :bordered="false"
             :maxlength="2000"
             class="hero-section__textarea"
             placeholder="例如：帮我做一个适配移动端的企业官网，包含首页、产品页和联系表单"
-            :bordered="false"
             @press-enter="handleComposerEnter"
           />
 
@@ -27,11 +27,11 @@
             </div>
 
             <a-button
-              type="primary"
+              class="hero-section__submit"
+              :loading="creatingApp"
               shape="circle"
               size="large"
-              :loading="creatingApp"
-              class="hero-section__submit"
+              type="primary"
               @click="handleCreateApp"
             >
               <template v-if="!creatingApp" #icon>
@@ -57,13 +57,9 @@
 
     <div class="home-page__panels">
       <section class="app-section">
-        <div class="section-card">
-          <div class="section-card__header">
-            <div>
-              <h2 class="section-card__title">我的作品</h2>
-            </div>
-
-            <div v-if="loginUserStore.loginUser.id" class="section-card__search">
+        <SectionCard title="我的作品">
+          <template v-if="loginUserStore.loginUser.id" #extra>
+            <div class="home-page__section-search">
               <a-input-search
                 v-model:value="mySearchKeyword"
                 allow-clear
@@ -71,7 +67,7 @@
                 @search="handleMySearch"
               />
             </div>
-          </div>
+          </template>
 
           <template v-if="loginUserStore.loginUser.id">
             <a-spin :spinning="myAppsLoading">
@@ -80,46 +76,41 @@
                   v-for="app in myApps"
                   :key="app.id"
                   :app="app"
-                  badge="我的应用"
                   can-delete
                   can-edit
+                  @delete="handleDeleteOwnApp"
+                  @edit="openOwnAppEdit"
                   @open="openAppDetail"
                   @open-work="openAppWork"
-                  @edit="openOwnAppEdit"
-                  @delete="handleDeleteOwnApp"
                 />
               </div>
 
               <a-empty v-else description="暂时还没有应用，试试上面的提示词吧。" />
             </a-spin>
-
-            <div class="section-card__pagination">
-              <a-pagination
-                v-model:current="mySearchParams.pageNum"
-                v-model:page-size="mySearchParams.pageSize"
-                :total="myAppsTotal"
-                show-less-items
-                @change="handleMyPageChange"
-              />
-            </div>
           </template>
 
-          <div v-else class="section-card__empty-auth">
+          <div v-else class="home-page__empty-auth">
             <a-empty description="登录后即可查看自己的应用列表、编辑名称和删除应用。">
               <a-button type="primary" @click="goToLogin">去登录</a-button>
             </a-empty>
           </div>
-        </div>
+
+          <template v-if="loginUserStore.loginUser.id" #footer>
+            <a-pagination
+              v-model:current="mySearchParams.pageNum"
+              v-model:page-size="mySearchParams.pageSize"
+              :total="myAppsTotal"
+              show-less-items
+              @change="handleMyPageChange"
+            />
+          </template>
+        </SectionCard>
       </section>
 
       <section class="app-section">
-        <div class="section-card">
-          <div class="section-card__header">
-            <div>
-              <h2 class="section-card__title">精选案例</h2>
-            </div>
-
-            <div class="section-card__search">
+        <SectionCard title="精选案例">
+          <template #extra>
+            <div class="home-page__section-search">
               <a-input-search
                 v-model:value="featuredSearchKeyword"
                 allow-clear
@@ -127,7 +118,7 @@
                 @search="handleFeaturedSearch"
               />
             </div>
-          </div>
+          </template>
 
           <a-spin :spinning="featuredAppsLoading">
             <div v-if="featuredApps.length" class="app-grid">
@@ -135,7 +126,6 @@
                 v-for="app in featuredApps"
                 :key="app.id"
                 :app="app"
-                badge="精选"
                 @open="openAppDetail"
                 @open-work="openAppWork"
               />
@@ -144,7 +134,7 @@
             <a-empty v-else description="暂时还没有精选应用。" />
           </a-spin>
 
-          <div class="section-card__pagination">
+          <template #footer>
             <div>共 {{ featuredAppsTotal }} 个案例</div>
             <a-pagination
               v-model:current="featuredSearchParams.pageNum"
@@ -153,8 +143,8 @@
               show-less-items
               @change="handleFeaturedPageChange"
             />
-          </div>
-        </div>
+          </template>
+        </SectionCard>
       </section>
     </div>
   </div>
@@ -165,19 +155,22 @@ defineOptions({ name: 'HomePage' })
 
 import { nextTick, onActivated, onDeactivated, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
-import { Modal, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 
 import AppCard from '@/components/app/AppCard.vue'
+import SectionCard from '@/components/common/SectionCard.vue'
 import { addApp, deleteApp, listGoodAppVoByPage, listMyAppVoByPage } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { getAppIdString, resolveAppDeployUrl } from '@/utils/app'
+import { openInNewTab } from '@/utils/browser'
+import { confirmDangerAction } from '@/utils/confirm'
 import { consumeHomeRefreshNeeded } from '@/utils/homeRefresh'
 
 const router = useRouter()
 const loginUserStore = useLoginUserStore()
 
-const examplePrompts = ['波普风电商页面', '企业网站', '电商运营后台', '暗黑话题社区']
+const examplePrompts = ['波普风电商页面', '企业网站', '电商运营后台', '暗黑主题社区']
 
 const HOME_PAGE_SIZE = 6
 
@@ -297,12 +290,7 @@ const openAppDetail = async (app: API.AppVO) => {
 }
 
 const openAppWork = (app: API.AppVO) => {
-  const deployUrl = resolveAppDeployUrl(app)
-  if (!deployUrl) {
-    return
-  }
-
-  window.open(deployUrl, '_blank', 'noopener,noreferrer')
+  openInNewTab(resolveAppDeployUrl(app))
 }
 
 const openOwnAppEdit = async (app: API.AppVO) => {
@@ -317,12 +305,9 @@ const handleDeleteOwnApp = (app: API.AppVO) => {
     return
   }
 
-  Modal.confirm({
+  confirmDangerAction({
     title: '确认删除该应用吗？',
     content: '删除后无法恢复。',
-    okText: '删除',
-    okType: 'danger',
-    cancelText: '取消',
     async onOk() {
       const res = await deleteApp({ id: app.id })
       if (res.data.code === 0) {
@@ -571,12 +556,8 @@ onMounted(() => {
   width: 100%;
 }
 
-.section-card {
-  padding: 28px 30px 24px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.06);
+.home-page__section-search {
+  width: 100%;
 }
 
 .home-page :deep(.ant-input-affix-wrapper),
@@ -590,34 +571,7 @@ onMounted(() => {
   border-radius: 12px;
 }
 
-.section-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.section-card__title {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.7rem;
-  font-weight: 700;
-}
-
-.section-card__search {
-  width: min(100%, 300px);
-}
-
-.section-card__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 28px;
-  gap: 12px;
-}
-
-.section-card__empty-auth {
+.home-page__empty-auth {
   padding: 18px 0 10px;
 }
 
@@ -639,23 +593,9 @@ onMounted(() => {
     padding: 48px 18px 36px;
   }
 
-  .hero-section__composer-footer,
-  .section-card__header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .hero-section__composer-footer {
     align-items: flex-end;
-  }
-
-  .section-card__search {
-    width: 100%;
-  }
-
-  .section-card {
-    padding: 22px;
-    border-radius: 12px;
+    flex-direction: column;
   }
 
   .app-grid {
@@ -672,10 +612,6 @@ onMounted(() => {
   .hero-section__title-logo {
     width: 40px;
     height: 40px;
-  }
-
-  .section-card__title {
-    font-size: 1.45rem;
   }
 
   .hero-section__composer {

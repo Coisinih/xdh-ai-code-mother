@@ -8,13 +8,13 @@
             {{
               isAdmin
                 ? '管理员可修改应用名称、封面和优先级。'
-                : '普通用户目前仅可修改自己的应用名称。'
+                : '普通用户目前仅可修改自己应用的名称。'
             }}
           </p>
         </div>
         <a-space>
           <a-button @click="goBack">返回首页</a-button>
-          <a-button type="primary" :loading="saving" @click="handleSubmit">保存修改</a-button>
+          <a-button :loading="saving" type="primary" @click="handleSubmit">保存修改</a-button>
         </a-space>
       </div>
 
@@ -47,15 +47,13 @@
             <a-input-number
               v-model:value="formState.priority"
               :disabled="!isAdmin"
-              :min="0"
               :max="999"
+              :min="0"
               style="width: 100%"
             />
             <div class="app-edit-page__field-tip">
               {{
-                isAdmin
-                  ? '精选应用建议设置为 99。'
-                  : '普通用户暂不支持修改优先级。'
+                isAdmin ? '精选应用建议设置为 99。' : '普通用户暂不支持修改优先级。'
               }}
             </div>
           </a-form-item>
@@ -84,13 +82,13 @@
       </div>
 
       <div class="app-edit-page__preview-body">
-        <iframe
-          v-if="previewUrl"
-          :src="previewUrl"
-          class="app-edit-page__iframe"
-          title="应用预览"
+        <AppPreviewFrame
+          :preview-url="previewUrl"
+          :show-preview="Boolean(previewUrl)"
+          empty-description="当前应用还没有可展示的网页。"
+          iframe-title="应用预览"
+          min-height="600px"
         />
-        <a-empty v-else description="当前应用还没有可展示的网页。" />
       </div>
     </section>
   </div>
@@ -101,9 +99,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AppPreviewFrame from '@/components/app/AppPreviewFrame.vue'
+import { useRouteAppId } from '@/composables/useRouteAppId'
 import { adminGetAppVoById, adminUpdateApp, getAppVoById, updateApp } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
-import { formatDateTime, resolveAppPreviewUrl, type AppIdentifier } from '@/utils/app'
+import { formatDateTime, resolveAppPreviewUrl, toApiRequestId, type AppIdentifier } from '@/utils/app'
+import { openInNewTab } from '@/utils/browser'
 import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 
 type AppEditFormState = Omit<API.AppAdminUpdateRequest, 'id'> & {
@@ -112,6 +113,7 @@ type AppEditFormState = Omit<API.AppAdminUpdateRequest, 'id'> & {
 
 const route = useRoute()
 const router = useRouter()
+const appId = useRouteAppId()
 const loginUserStore = useLoginUserStore()
 
 const loading = ref(false)
@@ -124,18 +126,10 @@ const formState = reactive<AppEditFormState>({
   priority: 0,
 })
 
-const appId = computed(() => {
-  const routeId = route.params.id
-  if (Array.isArray(routeId)) {
-    return routeId[0] ?? ''
-  }
-  return typeof routeId === 'string' ? routeId : ''
-})
 const isAdmin = computed(() => loginUserStore.loginUser.userRole === 'admin')
 const previewUrl = computed(() => resolveAppPreviewUrl(appDetail))
 const createdAt = computed(() => formatDateTime(appDetail.createTime))
 const updatedAt = computed(() => formatDateTime(appDetail.updateTime))
-const getAppRequestId = (id: AppIdentifier) => id as unknown as number
 
 const ensureEditable = async () => {
   if (isAdmin.value) {
@@ -174,8 +168,8 @@ const loadAppDetail = async () => {
   loading.value = true
   try {
     const res = isAdmin.value
-      ? await adminGetAppVoById({ id: getAppRequestId(appId.value) })
-      : await getAppVoById({ id: getAppRequestId(appId.value) })
+      ? await adminGetAppVoById({ id: toApiRequestId(appId.value) })
+      : await getAppVoById({ id: toApiRequestId(appId.value) })
 
     if (res.data.code === 0 && res.data.data) {
       Object.assign(appDetail, res.data.data)
@@ -208,7 +202,7 @@ const handleSubmit = async () => {
   try {
     if (isAdmin.value) {
       const res = await adminUpdateApp({
-        id: getAppRequestId(formState.id as AppIdentifier),
+        id: toApiRequestId(formState.id),
         appName,
         cover: formState.cover?.trim(),
         priority: formState.priority ?? 0,
@@ -224,7 +218,7 @@ const handleSubmit = async () => {
     }
 
     const res = await updateApp({
-      id: getAppRequestId(formState.id as AppIdentifier),
+      id: toApiRequestId(formState.id),
       appName,
     })
     if (res.data.code === 0) {
@@ -240,9 +234,7 @@ const handleSubmit = async () => {
 }
 
 const openPreview = () => {
-  if (previewUrl.value) {
-    window.open(previewUrl.value, '_blank', 'noopener,noreferrer')
-  }
+  openInNewTab(previewUrl.value)
 }
 
 const goBack = () => {
@@ -304,17 +296,9 @@ onMounted(() => {
 }
 
 .app-edit-page__preview-body {
+  display: flex;
   flex: 1;
   min-height: 0;
-}
-
-.app-edit-page__iframe {
-  width: 100%;
-  height: 100%;
-  min-height: 600px;
-  background: #ffffff;
-  border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 22px;
 }
 
 @media (max-width: 1180px) {

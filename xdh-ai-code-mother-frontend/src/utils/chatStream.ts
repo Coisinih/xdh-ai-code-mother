@@ -1,4 +1,5 @@
-import { API_BASE_URL, type AppIdentifier } from '@/utils/app'
+import { API_BASE_URL } from '@/config/runtime'
+import { type AppIdentifier } from '@/utils/app'
 
 type StreamHandlers = {
   onChunk: (chunk: string) => void

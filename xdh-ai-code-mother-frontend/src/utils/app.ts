@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 
-export const API_BASE_URL = 'http://localhost:8123/api'
-export const APP_PAGE_SIZE = 10
+import { APP_DEPLOY_BASE_URL, APP_PREVIEW_BASE_URL } from '@/config/runtime'
+
 export const DEFAULT_CODE_GEN_TYPE = 'vue'
 export type AppIdentifier = string | number
 
@@ -13,10 +13,11 @@ export const getAppIdString = (appId?: AppIdentifier | null) => {
   return String(appId)
 }
 
-export const resolveAppPreviewUrl = (
-  app?: Partial<API.AppVO>,
-  options?: { preferDeployKey?: boolean }
-) => {
+export const toApiRequestId = (appId: AppIdentifier) => {
+  return appId as unknown as number
+}
+
+export const resolveAppPreviewUrl = (app?: Partial<API.AppVO>) => {
   const appId = getAppIdString(app?.id)
   const codeGenType = app?.codeGenType
   const deployKey = app?.deployKey
@@ -25,20 +26,16 @@ export const resolveAppPreviewUrl = (
     return ''
   }
 
-  if (options?.preferDeployKey && deployKey) {
-    return `${API_BASE_URL}/static/${deployKey}/`
-  }
-
   if (appId && codeGenType) {
-    return `${API_BASE_URL}/static/${codeGenType}_${appId}/`
+    return `${APP_PREVIEW_BASE_URL}/${codeGenType}_${appId}/`
   }
 
   if (deployKey) {
-    return `${API_BASE_URL}/static/${deployKey}/`
+    return `${APP_PREVIEW_BASE_URL}/${deployKey}/`
   }
 
   if (appId) {
-    return `${API_BASE_URL}/static/${DEFAULT_CODE_GEN_TYPE}_${appId}/`
+    return `${APP_PREVIEW_BASE_URL}/${DEFAULT_CODE_GEN_TYPE}_${appId}/`
   }
 
   return ''
@@ -54,15 +51,7 @@ export const resolveAppDeployUrl = (app?: Partial<API.AppVO>) => {
     return deployKey
   }
 
-  return `http://localhost/${deployKey}`
-}
-
-export const formatAppRelativeTime = (time?: string) => {
-  if (!time) {
-    return '刚刚创建'
-  }
-
-  return `创建于 ${dayjs(time).fromNow()}`
+  return `${APP_DEPLOY_BASE_URL}/${deployKey}`
 }
 
 export const formatDateTime = (time?: string) => {

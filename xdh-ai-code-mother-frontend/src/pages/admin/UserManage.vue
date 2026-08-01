@@ -1,7 +1,7 @@
 <template>
   <div class="user-manage-page">
     <a-card :bordered="false" class="user-manage-page__search-card">
-      <a-form layout="inline" :model="searchParams" @finish="doSearch">
+      <a-form :model="searchParams" layout="inline" @finish="doSearch">
         <a-form-item label="账号">
           <a-input v-model:value="searchParams.userAccount" placeholder="输入账号" />
         </a-form-item>
@@ -40,7 +40,7 @@
           </template>
 
           <template v-else-if="column.dataIndex === 'createTime'">
-            {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm:ss') }}
+            {{ formatDateTime(record.createTime) }}
           </template>
 
           <template v-else-if="column.key === 'action'">
@@ -54,10 +54,11 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { message, Modal } from 'ant-design-vue'
-import dayjs from 'dayjs'
+import { message } from 'ant-design-vue'
 
 import { deleteUser, listUserVoByPage } from '@/api/userController'
+import { formatDateTime } from '@/utils/app'
+import { confirmDangerAction } from '@/utils/confirm'
 
 const data = ref<API.UserVO[]>([])
 const total = ref(0)
@@ -84,12 +85,9 @@ const doDelete = (id?: number) => {
     return
   }
 
-  Modal.confirm({
+  confirmDangerAction({
     title: '确认删除该用户吗？',
     content: '删除后无法恢复。',
-    okText: '删除',
-    okType: 'danger',
-    cancelText: '取消',
     async onOk() {
       const res = await deleteUser({ id })
       if (res.data.code === 0) {

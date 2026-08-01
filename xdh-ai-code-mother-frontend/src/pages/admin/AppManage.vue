@@ -27,8 +27,8 @@
             <span class="app-manage-page__search-label">生成类型：</span>
             <a-select
               v-model:value="searchForm.codeGenType"
-              allow-clear
               :options="codeGenTypeOptions"
+              allow-clear
               placeholder="请选择生成类型"
             />
           </div>
@@ -62,9 +62,9 @@
           <template v-if="column.dataIndex === 'cover'">
             <a-image
               v-if="record.cover"
+              :preview="false"
               :src="record.cover"
               :width="72"
-              :preview="false"
               style="border-radius: 10px"
             />
             <span v-else>-</span>
@@ -102,13 +102,13 @@
             <a-space wrap>
               <a-button size="small" type="primary" @click="openEditPage(record)">编辑</a-button>
               <a-button
-                size="small"
                 :class="{ 'app-manage-page__unfeature-button': isFeaturedApp(record) }"
+                size="small"
                 @click="toggleFeaturedStatus(record)"
               >
                 {{ isFeaturedApp(record) ? '取消精选' : '精选' }}
               </a-button>
-              <a-button size="small" danger @click="deleteRecord(record)">删除</a-button>
+              <a-button danger size="small" @click="deleteRecord(record)">删除</a-button>
             </a-space>
           </template>
         </template>
@@ -119,11 +119,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Modal, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 
 import { adminDeleteApp, adminListAppVoByPage, adminUpdateApp } from '@/api/appController'
 import { formatDateTime } from '@/utils/app'
+import { openInNewTab } from '@/utils/browser'
+import { confirmDangerAction } from '@/utils/confirm'
 import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 
 const GOOD_APP_PRIORITY = 99
@@ -258,7 +260,7 @@ const openEditPage = (record: API.AppVO) => {
   }
 
   const targetUrl = router.resolve({ path: `/app/edit/${record.id}` }).href
-  window.open(targetUrl, '_blank', 'noopener,noreferrer')
+  openInNewTab(targetUrl)
 }
 
 const toggleFeaturedStatus = async (record: API.AppVO) => {
@@ -292,12 +294,9 @@ const deleteRecord = (record: API.AppVO) => {
     return
   }
 
-  Modal.confirm({
-    title: `确认删除应用「${record.appName || record.id}」吗？`,
+  confirmDangerAction({
+    title: `确认删除应用“${record.appName || record.id}”吗？`,
     content: '删除后无法恢复。',
-    okText: '删除',
-    okType: 'danger',
-    cancelText: '取消',
     async onOk() {
       const res = await adminDeleteApp({ id: record.id })
       if (res.data.code === 0) {
@@ -337,8 +336,8 @@ onMounted(() => {
 }
 
 .app-manage-page__search-grid {
-  flex: 1;
   display: grid;
+  flex: 1;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }

@@ -13,10 +13,10 @@
       <div class="app-chat-page__header-right">
         <a-button v-if="deployUrl" size="large" @click="openDeployUrl">访问已部署地址</a-button>
         <a-button
-          type="primary"
-          size="large"
-          :loading="deploying"
           :disabled="!canDeployApp"
+          :loading="deploying"
+          size="large"
+          type="primary"
           @click="handleDeploy"
         >
           {{ hasDeployedApp ? '重新部署' : '部署' }}
@@ -38,8 +38,8 @@
             <a-avatar
               v-if="item.role === 'assistant'"
               :size="36"
-              class="chat-message__avatar"
               :src="aiAssistantAvatar"
+              class="chat-message__avatar"
             />
 
             <div class="chat-message__bubble">
@@ -57,8 +57,8 @@
             <a-avatar
               v-if="item.role === 'user'"
               :size="36"
-              class="chat-message__avatar"
               :src="loginUserStore.loginUser.userAvatar"
+              class="chat-message__avatar"
             >
               {{ (loginUserStore.loginUser.userName || 'U').slice(0, 1) }}
             </a-avatar>
@@ -74,7 +74,9 @@
         <div class="app-chat-page__composer">
           <div class="app-chat-page__composer-tools">
             <a-space wrap>
-              <a-button :disabled="!canChatOnApp" @click="fillOptimizePrompt">优化当前应用</a-button>
+              <a-button :disabled="!canChatOnApp" @click="fillOptimizePrompt">
+                优化当前应用
+              </a-button>
               <a-button disabled>上传素材（待开放）</a-button>
             </a-space>
           </div>
@@ -95,10 +97,10 @@
           <div class="app-chat-page__composer-footer">
             <span class="app-chat-page__composer-hint">支持连续对话优化同一个应用</span>
             <a-button
-              type="primary"
-              size="large"
               :disabled="!canChatOnApp || !appDetail.id"
               :loading="isStreaming"
+              size="large"
+              type="primary"
               @click="sendCurrentMessage"
             >
               发送
@@ -121,22 +123,14 @@
         </div>
 
         <div class="preview-panel__body">
-          <div v-if="previewLoading" class="preview-panel__loading">
-            <a-spin size="large" />
-            <p>代码已生成完成，正在加载右侧静态资源...</p>
-          </div>
-
-          <iframe
-            v-else-if="showPreview && previewUrl"
-            :key="previewFrameKey"
-            :src="previewUrl"
-            class="preview-panel__iframe"
-            title="应用预览"
-          />
-
-          <a-empty
-            v-else
-            description="代码生成完成并且静态资源可访问后，这里才会显示网页效果。"
+          <AppPreviewFrame
+            :iframe-key="previewFrameKey"
+            :loading="previewLoading"
+            :preview-url="previewUrl"
+            :show-preview="showPreview"
+            empty-description="代码生成完成并且静态资源可访问后，这里才会显示网页效果。"
+            iframe-title="应用预览"
+            loading-text="代码已经生成完成，正在加载右侧静态资源..."
           />
         </div>
       </section>
@@ -159,9 +153,9 @@
         <div class="deploy-success-modal__url-box">
           <span class="deploy-success-modal__url-text">{{ deployUrl }}</span>
           <a-button
-            type="text"
-            class="deploy-success-modal__copy-btn"
             :disabled="!deployUrl"
+            class="deploy-success-modal__copy-btn"
+            type="text"
             @click="copyDeployUrl"
           >
             <template #icon>
@@ -185,7 +179,9 @@ import { CheckCircleFilled, CopyOutlined, LeftOutlined } from '@ant-design/icons
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AppPreviewFrame from '@/components/app/AppPreviewFrame.vue'
 import MarkdownContent from '@/components/chat/MarkdownContent.vue'
+import { useRouteAppId } from '@/composables/useRouteAppId'
 import { deployApp, getAppVoById } from '@/api/appController'
 import aiAssistantAvatar from '@/assets/img_1.png'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -195,8 +191,10 @@ import {
   getAppIdString,
   resolveAppDeployUrl,
   resolveAppPreviewUrl,
+  toApiRequestId,
   type AppIdentifier,
 } from '@/utils/app'
+import { openInNewTab } from '@/utils/browser'
 import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 import 'highlight.js/styles/github.css'
 
@@ -215,6 +213,7 @@ type StoredChatPageState = {
 
 const route = useRoute()
 const router = useRouter()
+const appId = useRouteAppId()
 const loginUserStore = useLoginUserStore()
 
 const appDetail = reactive<API.AppVO>({})
@@ -229,14 +228,6 @@ const previewLoading = ref(false)
 const previewFrameKey = ref(0)
 const messageContainerRef = ref<HTMLElement>()
 const currentAbortController = ref<AbortController>()
-
-const appId = computed(() => {
-  const routeId = route.params.id
-  if (Array.isArray(routeId)) {
-    return routeId[0] ?? ''
-  }
-  return typeof routeId === 'string' ? routeId : ''
-})
 
 const appName = computed(() => getAppDisplayName(appDetail))
 const previewUrl = computed(() => resolveAppPreviewUrl(appDetail))
@@ -257,7 +248,6 @@ const chatBlockedReason = '无法在别人的作品下对话哦~'
 
 const getAutoPromptStorageKey = (id: AppIdentifier) => `app:autoPrompt:${getAppIdString(id)}`
 const getChatStateStorageKey = (id: AppIdentifier) => `app:chatState:${getAppIdString(id)}`
-const getAppRequestId = (id: AppIdentifier) => id as unknown as number
 
 const normalizeMessagesForStorage = (source: ChatMessage[]) => {
   return source.map((item) => ({
@@ -313,12 +303,12 @@ const scrollMessagesToBottom = async () => {
 
 const loadAppDetail = async () => {
   if (!appId.value) {
-    message.error('��用 id 无效')
+    message.error('应用 id 无效')
     await router.replace('/')
     return false
   }
 
-  const res = await getAppVoById({ id: getAppRequestId(appId.value) })
+  const res = await getAppVoById({ id: toApiRequestId(appId.value) })
   if (res.data.code === 0 && res.data.data) {
     Object.assign(appDetail, res.data.data)
     deployUrl.value = resolveAppDeployUrl(appDetail) || deployUrl.value
@@ -339,7 +329,7 @@ const appendMessage = (messageItem: ChatMessage) => {
 const replaceAssistantContent = (
   messageId: string,
   content: string,
-  status: ChatMessage['status']
+  status: ChatMessage['status'],
 ) => {
   const targetMessage = messages.value.find((item) => item.id === messageId)
   if (!targetMessage) {
@@ -389,7 +379,7 @@ const loadPreviewAfterDone = async () => {
   if (!available) {
     showPreview.value = false
     persistChatPageState()
-    message.warning('代码生成完成，但静态资源暂时不可访问，请稍后重试')
+    message.warning('代码生成已完成，但静态资源暂时不可访问，请稍后重试')
     return
   }
 
@@ -443,7 +433,7 @@ const runChat = async (content: string) => {
           previewLoading.value = true
         },
       },
-      abortController.signal
+      abortController.signal,
     )
 
     replaceAssistantContent(assistantMessageId, assistantContent || '生成完成。', 'done')
@@ -501,7 +491,7 @@ const handleDeploy = async () => {
 
   deploying.value = true
   try {
-    const res = await deployApp({ appId: getAppRequestId(appDetail.id as AppIdentifier) })
+    const res = await deployApp({ appId: toApiRequestId(appDetail.id as AppIdentifier) })
     if (res.data.code === 0 && res.data.data) {
       deployUrl.value = res.data.data
       await loadAppDetail()
@@ -517,15 +507,11 @@ const handleDeploy = async () => {
 }
 
 const openPreviewUrl = () => {
-  if (previewUrl.value) {
-    window.open(previewUrl.value, '_blank', 'noopener,noreferrer')
-  }
+  openInNewTab(previewUrl.value)
 }
 
 const openDeployUrl = () => {
-  if (deployUrl.value) {
-    window.open(deployUrl.value, '_blank', 'noopener,noreferrer')
-  }
+  openInNewTab(deployUrl.value)
 }
 
 const copyDeployUrl = async () => {
@@ -664,15 +650,15 @@ onBeforeUnmount(() => {
 }
 
 .app-chat-page__content {
-  flex: 1;
+  box-sizing: border-box;
   display: grid;
+  flex: 1;
   grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1.35fr);
   gap: 2px;
   height: 0;
   max-height: 100%;
   min-height: 0;
   padding: 0 0;
-  box-sizing: border-box;
   overflow: hidden;
 }
 
@@ -689,8 +675,8 @@ onBeforeUnmount(() => {
 }
 
 .app-chat-page__messages {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 18px;
   min-height: 0;
@@ -788,39 +774,12 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
-.preview-panel__desc {
-  margin: 8px 0 0;
-  color: var(--app-text-secondary);
-}
-
 .preview-panel__body {
-  flex: 1;
   display: flex;
+  flex: 1;
   min-height: 0;
   padding: 0 20px 20px;
   overflow: hidden;
-}
-
-.preview-panel__loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  width: 100%;
-  min-height: 320px;
-  color: var(--app-text-secondary);
-}
-
-.preview-panel__iframe {
-  display: block;
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  background: #ffffff;
-  border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 22px;
 }
 
 .deploy-success-modal {
