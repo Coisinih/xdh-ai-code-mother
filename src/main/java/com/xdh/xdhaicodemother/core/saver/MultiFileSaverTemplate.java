@@ -1,5 +1,6 @@
 package com.xdh.xdhaicodemother.core.saver;
 
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xdh.xdhaicodemother.ai.model.MultiFileCodeResult;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
@@ -16,8 +17,12 @@ public class MultiFileSaverTemplate extends CodeFileSaverTemplate<MultiFileCodeR
     @Override
     protected void saveCodeToFile(String dirPath, MultiFileCodeResult multiFileCodeResult) {
         writeToFile(dirPath, "index.html", multiFileCodeResult.getHtmlCode());
-        writeToFile(dirPath, "style.css", multiFileCodeResult.getCssCode());
-        writeToFile(dirPath, "script.js", multiFileCodeResult.getJsCode());
+        if (CharSequenceUtil.isNotBlank(multiFileCodeResult.getCssCode())) {
+            writeToFile(dirPath, "style.css", multiFileCodeResult.getCssCode());
+        }
+        if (CharSequenceUtil.isNotBlank(multiFileCodeResult.getCssCode())) {
+            writeToFile(dirPath, "script.js", multiFileCodeResult.getJsCode());
+        }
     }
 
     @Override
