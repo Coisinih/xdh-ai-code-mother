@@ -153,7 +153,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'HomePage' })
 
-import { nextTick, onActivated, onDeactivated, onMounted, reactive, ref, watch } from 'vue'
+import { nextTick, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
@@ -360,16 +360,6 @@ watch(
   },
 )
 
-let savedScrollY = 0
-
-const restoreHomeScroll = () => {
-  if (savedScrollY > 0) {
-    setTimeout(() => {
-      window.scrollTo(0, savedScrollY)
-    }, 0)
-  }
-}
-
 const refreshHomeDataIfNeeded = async () => {
   if (!consumeHomeRefreshNeeded()) {
     return
@@ -379,13 +369,8 @@ const refreshHomeDataIfNeeded = async () => {
   await nextTick()
 }
 
-onDeactivated(() => {
-  savedScrollY = window.scrollY || document.documentElement.scrollTop
-})
-
 onActivated(async () => {
   await refreshHomeDataIfNeeded()
-  restoreHomeScroll()
 })
 
 onMounted(() => {

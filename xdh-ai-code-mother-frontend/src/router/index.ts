@@ -39,6 +39,11 @@ const router = createRouter({
       component: () => import('@/pages/admin/AppManage.vue'),
     },
     {
+      path: '/admin/chatHistoryManage',
+      name: '对话管理',
+      component: () => import('@/pages/admin/ChatHistoryManage.vue'),
+    },
+    {
       path: '/admin/userManage',
       name: '用户管理',
       component: () => import('@/pages/admin/UserManage.vue'),

@@ -201,7 +201,16 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Override
     public QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR, "request is null");
-        QueryWrapper queryWrapper = QueryWrapper.create().eq("id", appQueryRequest.getId()).like("appName", appQueryRequest.getAppName()).like("cover", appQueryRequest.getCover()).like("initPrompt", appQueryRequest.getInitPrompt()).eq("codeGenType", appQueryRequest.getCodeGenType()).eq("deployKey", appQueryRequest.getDeployKey()).eq("priority", appQueryRequest.getPriority()).eq("userId", appQueryRequest.getUserId()).orderBy(appQueryRequest.getSortField(), "ascend".equals(appQueryRequest.getSortOrder()));
+        QueryWrapper queryWrapper = QueryWrapper.create()
+                .eq("id", appQueryRequest.getId())
+                .like("appName", appQueryRequest.getAppName())
+                .like("cover", appQueryRequest.getCover())
+                .like("initPrompt", appQueryRequest.getInitPrompt())
+                .eq("codeGenType", appQueryRequest.getCodeGenType())
+                .eq("deployKey", appQueryRequest.getDeployKey())
+                .eq("priority", appQueryRequest.getPriority())
+                .eq("userId", appQueryRequest.getUserId())
+                .orderBy(appQueryRequest.getSortField(), "ascend".equals(appQueryRequest.getSortOrder()));
         if (CharSequenceUtil.isNotBlank(appQueryRequest.getSortField())) {
             queryWrapper.orderBy(appQueryRequest.getSortField(), "ascend".equals(appQueryRequest.getSortOrder()));
         } else {

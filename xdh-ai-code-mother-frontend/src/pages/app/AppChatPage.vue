@@ -27,45 +27,59 @@
     <main class="app-chat-page__content">
       <section class="app-chat-page__panel app-chat-page__panel--chat">
         <div ref="messageContainerRef" class="app-chat-page__messages">
-          <div
-            v-for="item in messages"
-            :key="item.id"
-            :class="[
-              'chat-message',
-              item.role === 'user' ? 'chat-message--user' : 'chat-message--assistant',
-            ]"
-          >
-            <a-avatar
-              v-if="item.role === 'assistant'"
-              :size="36"
-              :src="aiAssistantAvatar"
-              class="chat-message__avatar"
-            />
-
-            <div class="chat-message__bubble">
-              <div class="chat-message__content">
-                <MarkdownContent
-                  v-if="item.role === 'assistant' && item.content"
-                  :content="item.content"
-                />
-                <template v-else>
-                  {{ item.content || (item.status === 'streaming' ? '正在生成中...' : '') }}
-                </template>
-              </div>
-            </div>
-
-            <a-avatar
-              v-if="item.role === 'user'"
-              :size="36"
-              :src="loginUserStore.loginUser.userAvatar"
-              class="chat-message__avatar"
+          <div class="app-chat-page__load-more">
+            <a-button
+              v-if="historyHasMore"
+              :loading="loadingMoreHistory"
+              :disabled="historyLoading || loadingMoreHistory"
+              type="link"
+              @click="loadMoreHistory"
             >
-              {{ (loginUserStore.loginUser.userName || 'U').slice(0, 1) }}
-            </a-avatar>
+              加载更多
+            </a-button>
           </div>
 
+          <a-spin :spinning="historyLoading && !messages.length">
+            <div
+              v-for="item in messages"
+              :key="item.id"
+              :class="[
+                'chat-message',
+                item.role === 'user' ? 'chat-message--user' : 'chat-message--assistant',
+              ]"
+            >
+              <a-avatar
+                v-if="item.role === 'assistant'"
+                :size="36"
+                :src="aiAssistantAvatar"
+                class="chat-message__avatar"
+              />
+
+              <div class="chat-message__bubble">
+                <div class="chat-message__content">
+                  <MarkdownContent
+                    v-if="item.role === 'assistant' && item.content"
+                    :content="item.content"
+                  />
+                  <template v-else>
+                    {{ item.content || (item.status === 'streaming' ? '正在生成中...' : '') }}
+                  </template>
+                </div>
+              </div>
+
+              <a-avatar
+                v-if="item.role === 'user'"
+                :size="36"
+                :src="loginUserStore.loginUser.userAvatar"
+                class="chat-message__avatar"
+              >
+                {{ (loginUserStore.loginUser.userName || 'U').slice(0, 1) }}
+              </a-avatar>
+            </div>
+          </a-spin>
+
           <a-empty
-            v-if="!messages.length"
+            v-if="!historyLoading && !messages.length"
             class="app-chat-page__empty"
             description="创建应用后，实时生成内容会显示在这里。"
           />
@@ -74,9 +88,7 @@
         <div class="app-chat-page__composer">
           <div class="app-chat-page__composer-tools">
             <a-space wrap>
-              <a-button :disabled="!canChatOnApp" @click="fillOptimizePrompt">
-                优化当前应用
-              </a-button>
+              <a-button :disabled="!canChatOnApp" @click="fillOptimizePrompt">优化当前应用</a-button>
               <a-button disabled>上传素材（待开放）</a-button>
             </a-space>
           </div>
@@ -88,7 +100,7 @@
                 :auto-size="{ minRows: 4, maxRows: 7 }"
                 :disabled="!canChatOnApp"
                 :maxlength="2000"
-                placeholder="描述越详细，页面越具体。比如：请把首页改成深色科技风，并补充产品优势区块。"
+                placeholder="描述越详细，页面越具体。例如：请把首页改成深色科技风，并补充产品优势区块。"
                 @press-enter="handleTextareaEnter"
               />
             </div>
@@ -112,13 +124,11 @@
       <section class="app-chat-page__panel app-chat-page__panel--preview">
         <div class="preview-panel__header">
           <div>
-            <h2 class="preview-panel__title">网页预览</h2>
+            <h2 class="preview-panel__title">网站预览</h2>
           </div>
           <a-space v-if="showPreview && previewUrl">
             <a-button @click="openPreviewUrl">新窗口打开</a-button>
-            <a-button v-if="canEditAppInfo" type="link" @click="openEditPage">
-              编辑应用信息
-            </a-button>
+            <a-button v-if="canEditAppInfo" type="link" @click="openEditPage">编辑应用信息</a-button>
           </a-space>
         </div>
 
@@ -128,7 +138,7 @@
             :loading="previewLoading"
             :preview-url="previewUrl"
             :show-preview="showPreview"
-            empty-description="代码生成完成并且静态资源可访问后，这里才会显示网页效果。"
+            empty-description="对话生成完成后，这里会展示对应的网站效果。"
             iframe-title="应用预览"
             loading-text="代码已经生成完成，正在加载右侧静态资源..."
           />
@@ -146,9 +156,7 @@
       <div class="deploy-success-modal">
         <CheckCircleFilled class="deploy-success-modal__icon" />
         <h3 class="deploy-success-modal__headline">网站部署成功!</h3>
-        <p class="deploy-success-modal__desc">
-          你的网站已经成功部署，可以通过以下链接访问:
-        </p>
+        <p class="deploy-success-modal__desc">你的网站已经成功部署，可以通过以下链接访问:</p>
 
         <div class="deploy-success-modal__url-box">
           <span class="deploy-success-modal__url-text">{{ deployUrl }}</span>
@@ -178,38 +186,37 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { CheckCircleFilled, CopyOutlined, LeftOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
+import dayjs from 'dayjs'
 
 import AppPreviewFrame from '@/components/app/AppPreviewFrame.vue'
 import MarkdownContent from '@/components/chat/MarkdownContent.vue'
 import { useRouteAppId } from '@/composables/useRouteAppId'
 import { deployApp, getAppVoById } from '@/api/appController'
+import { listAppChatHistory } from '@/api/chatHistoryController'
 import aiAssistantAvatar from '@/assets/img_1.png'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { streamChatToGenCode } from '@/utils/chatStream'
 import {
   getAppDisplayName,
-  getAppIdString,
   resolveAppDeployUrl,
   resolveAppPreviewUrl,
   toApiRequestId,
-  type AppIdentifier,
 } from '@/utils/app'
 import { openInNewTab } from '@/utils/browser'
 import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 import 'highlight.js/styles/github.css'
 
+type ChatRole = 'user' | 'assistant'
+
 type ChatMessage = {
   id: string
-  role: 'user' | 'assistant'
+  role: ChatRole
   content: string
   status?: 'streaming' | 'done' | 'error'
+  createTime?: string
 }
 
-type StoredChatPageState = {
-  messages: ChatMessage[]
-  showPreview: boolean
-  deployUrl: string
-}
+const HISTORY_PAGE_SIZE = 10
 
 const route = useRoute()
 const router = useRouter()
@@ -226,6 +233,10 @@ const deploySuccessModalOpen = ref(false)
 const showPreview = ref(false)
 const previewLoading = ref(false)
 const previewFrameKey = ref(0)
+const historyLoading = ref(false)
+const loadingMoreHistory = ref(false)
+const historyHasMore = ref(false)
+const historyTotal = ref(0)
 const messageContainerRef = ref<HTMLElement>()
 const currentAbortController = ref<AbortController>()
 
@@ -246,51 +257,61 @@ const canDeployApp = computed(() => Boolean(appDetail.id) && isOwnApp.value)
 const hasDeployedApp = computed(() => Boolean(appDetail.deployKey?.trim()))
 const chatBlockedReason = '无法在别人的作品下对话哦~'
 
-const getAutoPromptStorageKey = (id: AppIdentifier) => `app:autoPrompt:${getAppIdString(id)}`
-const getChatStateStorageKey = (id: AppIdentifier) => `app:chatState:${getAppIdString(id)}`
-
-const normalizeMessagesForStorage = (source: ChatMessage[]) => {
-  return source.map((item) => ({
-    ...item,
-    status: item.status === 'streaming' ? 'done' : item.status,
-  }))
+const getMessageKey = (item: ChatMessage) => {
+  return item.id
 }
 
-const persistChatPageState = () => {
-  if (!appId.value) {
-    return
+const getChatRole = (messageType?: string): ChatRole => {
+  const normalized = messageType?.trim().toLowerCase()
+  if (!normalized) {
+    return 'assistant'
   }
 
-  const payload: StoredChatPageState = {
-    messages: normalizeMessagesForStorage(messages.value),
-    showPreview: showPreview.value,
-    deployUrl: deployUrl.value,
+  if (normalized.includes('user') || normalized.includes('human') || normalized === 'question') {
+    return 'user'
   }
 
-  sessionStorage.setItem(getChatStateStorageKey(appId.value), JSON.stringify(payload))
+  return 'assistant'
 }
 
-const restoreChatPageState = () => {
-  if (!appId.value) {
-    return
-  }
+const toChatMessage = (record: API.ChatHistory): ChatMessage => {
+  const recordId = record.id ?? `${record.createTime || Date.now()}-${record.messageType || 'chat'}`
 
-  const rawState = sessionStorage.getItem(getChatStateStorageKey(appId.value))
-  if (!rawState) {
-    return
+  return {
+    id: `history-${recordId}`,
+    role: getChatRole(record.messageType),
+    content: record.message?.trim() || '',
+    status: 'done',
+    createTime: record.createTime,
   }
+}
 
-  try {
-    const parsedState = JSON.parse(rawState) as Partial<StoredChatPageState>
-    messages.value = Array.isArray(parsedState.messages)
-      ? normalizeMessagesForStorage(parsedState.messages as ChatMessage[])
-      : []
-    showPreview.value = Boolean(parsedState.showPreview)
-    deployUrl.value = parsedState.deployUrl || ''
-    previewFrameKey.value = showPreview.value ? 1 : 0
-  } catch {
-    sessionStorage.removeItem(getChatStateStorageKey(appId.value))
-  }
+const compareByCreateTime = (left?: string, right?: string) => {
+  const leftTime = left ? dayjs(left).valueOf() : 0
+  const rightTime = right ? dayjs(right).valueOf() : 0
+  return leftTime - rightTime
+}
+
+const sortMessagesAscending = (source: ChatMessage[]) => {
+  return [...source].sort((left, right) => {
+    const byTime = compareByCreateTime(left.createTime, right.createTime)
+    if (byTime !== 0) {
+      return byTime
+    }
+    return left.id.localeCompare(right.id)
+  })
+}
+
+const dedupeMessages = (source: ChatMessage[]) => {
+  const map = new Map<string, ChatMessage>()
+  source.forEach((item) => {
+    map.set(getMessageKey(item), item)
+  })
+  return Array.from(map.values())
+}
+
+const replaceMessages = (source: ChatMessage[]) => {
+  messages.value = sortMessagesAscending(dedupeMessages(source))
 }
 
 const scrollMessagesToBottom = async () => {
@@ -311,7 +332,7 @@ const loadAppDetail = async () => {
   const res = await getAppVoById({ id: toApiRequestId(appId.value) })
   if (res.data.code === 0 && res.data.data) {
     Object.assign(appDetail, res.data.data)
-    deployUrl.value = resolveAppDeployUrl(appDetail) || deployUrl.value
+    deployUrl.value = resolveAppDeployUrl(appDetail)
     return true
   }
 
@@ -320,17 +341,97 @@ const loadAppDetail = async () => {
   return false
 }
 
+const loadHistoryPage = async (cursor?: string) => {
+  if (!appDetail.id) {
+    return { records: [] as ChatMessage[], total: 0, pageSize: HISTORY_PAGE_SIZE }
+  }
+
+  const res = await listAppChatHistory({
+    appId: toApiRequestId(appDetail.id),
+    pageSize: HISTORY_PAGE_SIZE,
+    ...(cursor ? { lastCreateTime: cursor } : {}),
+  })
+
+  if (res.data.code !== 0 || !res.data.data) {
+    throw new Error(res.data.message || '获取对话历史失败')
+  }
+
+  const pageRecords = res.data.data.records ?? []
+  return {
+    records: pageRecords.map(toChatMessage),
+    total: res.data.data.totalRow ?? 0,
+    pageSize: res.data.data.pageSize ?? HISTORY_PAGE_SIZE,
+  }
+}
+
+const loadInitialHistory = async () => {
+  if (!appDetail.id) {
+    return
+  }
+
+  historyLoading.value = true
+  try {
+    const page = await loadHistoryPage()
+    replaceMessages(page.records)
+    historyTotal.value = page.total || page.records.length
+    historyHasMore.value = page.records.length === HISTORY_PAGE_SIZE && historyTotal.value > page.records.length
+
+    if (String(route.query.view) === '1' || historyTotal.value >= 2) {
+      showPreview.value = true
+    }
+
+    if (showPreview.value && previewUrl.value) {
+      previewFrameKey.value += 1
+    }
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '获取对话历史失败')
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const loadMoreHistory = async () => {
+  if (!historyHasMore.value || loadingMoreHistory.value || historyLoading.value) {
+    return
+  }
+
+  const oldestMessage = messages.value[0]
+  if (!oldestMessage?.createTime) {
+    historyHasMore.value = false
+    return
+  }
+
+  const container = messageContainerRef.value
+  const previousScrollHeight = container?.scrollHeight ?? 0
+  const previousScrollTop = container?.scrollTop ?? 0
+
+  loadingMoreHistory.value = true
+  try {
+    const page = await loadHistoryPage(oldestMessage.createTime)
+    const merged = dedupeMessages([...page.records, ...messages.value])
+    replaceMessages(merged)
+
+    const receivedCount = page.records.length
+    historyTotal.value = Math.max(historyTotal.value, page.total || messages.value.length)
+    historyHasMore.value = receivedCount === HISTORY_PAGE_SIZE
+
+    await nextTick()
+    if (container) {
+      container.scrollTop = container.scrollHeight - previousScrollHeight + previousScrollTop
+    }
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '加载更多失败')
+  } finally {
+    loadingMoreHistory.value = false
+  }
+}
+
 const appendMessage = (messageItem: ChatMessage) => {
   messages.value.push(messageItem)
-  persistChatPageState()
   void scrollMessagesToBottom()
 }
 
-const replaceAssistantContent = (
-  messageId: string,
-  content: string,
-  status: ChatMessage['status'],
-) => {
+const replaceAssistantContent = (messageId: string, content: string, status: ChatMessage['status']) => {
   const targetMessage = messages.value.find((item) => item.id === messageId)
   if (!targetMessage) {
     return
@@ -338,8 +439,6 @@ const replaceAssistantContent = (
 
   targetMessage.content = content
   targetMessage.status = status
-  persistChatPageState()
-  void scrollMessagesToBottom()
 }
 
 const probeStaticPreview = async (url: string) => {
@@ -378,14 +477,12 @@ const loadPreviewAfterDone = async () => {
 
   if (!available) {
     showPreview.value = false
-    persistChatPageState()
     message.warning('代码生成已完成，但静态资源暂时不可访问，请稍后重试')
     return
   }
 
   showPreview.value = true
   previewFrameKey.value += 1
-  persistChatPageState()
 }
 
 const runChat = async (content: string) => {
@@ -412,7 +509,6 @@ const runChat = async (content: string) => {
   showPreview.value = false
   previewLoading.value = false
   previewFrameKey.value += 1
-  persistChatPageState()
 
   const abortController = new AbortController()
   currentAbortController.value = abortController
@@ -491,11 +587,10 @@ const handleDeploy = async () => {
 
   deploying.value = true
   try {
-    const res = await deployApp({ appId: toApiRequestId(appDetail.id as AppIdentifier) })
+    const res = await deployApp({ appId: toApiRequestId(appDetail.id) })
     if (res.data.code === 0 && res.data.data) {
       deployUrl.value = res.data.data
       await loadAppDetail()
-      persistChatPageState()
       markHomeRefreshNeeded()
       deploySuccessModalOpen.value = true
       return
@@ -545,29 +640,27 @@ const fillOptimizePrompt = () => {
   inputMessage.value = '请继续优化当前应用的视觉层次、排版细节和交互体验。'
 }
 
+const getAutoPromptStorageKey = (id: string | number) => `app:autoPrompt:${id}`
+
 const handleInitialPrompt = async () => {
-  if (String(route.query.view) === '1') {
-    if (previewUrl.value) {
-      showPreview.value = true
-      previewFrameKey.value += 1
-      persistChatPageState()
-    }
+  if (!isOwnApp.value || messages.value.length > 0) {
     return
   }
 
-  if (String(route.query.autoPrompt) !== '1' || !appId.value) {
-    return
+  const initialPrompt =
+    sessionStorage.getItem(appId.value ? getAutoPromptStorageKey(appId.value) : '')?.trim() ||
+    appDetail.initPrompt?.trim() ||
+    ''
+
+  if (appId.value) {
+    sessionStorage.removeItem(getAutoPromptStorageKey(appId.value))
   }
-
-  const storageKey = getAutoPromptStorageKey(appId.value)
-  const storedPrompt = sessionStorage.getItem(storageKey)?.trim()
-  const initialPrompt = storedPrompt || appDetail.initPrompt?.trim() || ''
-
-  sessionStorage.removeItem(storageKey)
 
   const nextQuery = { ...route.query }
   delete nextQuery.autoPrompt
-  await router.replace({ query: nextQuery })
+  if (Object.keys(nextQuery).length !== Object.keys(route.query).length) {
+    await router.replace({ query: nextQuery })
+  }
 
   if (!initialPrompt) {
     return
@@ -577,20 +670,18 @@ const handleInitialPrompt = async () => {
 }
 
 onMounted(async () => {
-  restoreChatPageState()
   const loaded = await loadAppDetail()
-  if (loaded) {
-    if (showPreview.value && previewUrl.value) {
-      previewFrameKey.value += 1
-    }
-    await handleInitialPrompt()
-    persistChatPageState()
+  if (!loaded) {
+    return
   }
+
+  await loadInitialHistory()
+  await scrollMessagesToBottom()
+  await handleInitialPrompt()
 })
 
 onBeforeUnmount(() => {
   currentAbortController.value?.abort()
-  persistChatPageState()
 })
 </script>
 
@@ -658,7 +749,7 @@ onBeforeUnmount(() => {
   height: 0;
   max-height: 100%;
   min-height: 0;
-  padding: 0 0;
+  padding: 0;
   overflow: hidden;
 }
 
@@ -683,6 +774,11 @@ onBeforeUnmount(() => {
   padding: 22px;
   overflow-y: auto;
   scroll-behavior: smooth;
+}
+
+.app-chat-page__load-more {
+  display: flex;
+  justify-content: center;
 }
 
 .app-chat-page__empty {

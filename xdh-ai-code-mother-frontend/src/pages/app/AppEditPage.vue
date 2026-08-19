@@ -13,7 +13,7 @@
           </p>
         </div>
         <a-space>
-          <a-button @click="goBack">返回首页</a-button>
+          <a-button @click="goBack">返回</a-button>
           <a-button :loading="saving" type="primary" @click="handleSubmit">保存修改</a-button>
         </a-space>
       </div>
@@ -52,9 +52,7 @@
               style="width: 100%"
             />
             <div class="app-edit-page__field-tip">
-              {{
-                isAdmin ? '精选应用建议设置为 99。' : '普通用户暂不支持修改优先级。'
-              }}
+              {{ isAdmin ? '精选应用建议设置为 99。' : '普通用户暂不支持修改优先级。' }}
             </div>
           </a-form-item>
 
@@ -85,7 +83,7 @@
         <AppPreviewFrame
           :preview-url="previewUrl"
           :show-preview="Boolean(previewUrl)"
-          empty-description="当前应用还没有可展示的网页。"
+          empty-description="当前应用还没有可展示的网页���"
           iframe-title="应用预览"
           min-height="600px"
         />
@@ -100,12 +98,12 @@ import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppPreviewFrame from '@/components/app/AppPreviewFrame.vue'
-import { useRouteAppId } from '@/composables/useRouteAppId'
 import { adminGetAppVoById, adminUpdateApp, getAppVoById, updateApp } from '@/api/appController'
+import { useRouteAppId } from '@/composables/useRouteAppId'
 import { useLoginUserStore } from '@/stores/loginUser'
-import { formatDateTime, resolveAppPreviewUrl, toApiRequestId, type AppIdentifier } from '@/utils/app'
 import { openInNewTab } from '@/utils/browser'
 import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
+import { formatDateTime, resolveAppPreviewUrl, toApiRequestId, type AppIdentifier } from '@/utils/app'
 
 type AppEditFormState = Omit<API.AppAdminUpdateRequest, 'id'> & {
   id?: AppIdentifier
@@ -238,7 +236,12 @@ const openPreview = () => {
 }
 
 const goBack = () => {
-  void router.push('/')
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+
+  void router.replace('/')
 }
 
 onMounted(() => {

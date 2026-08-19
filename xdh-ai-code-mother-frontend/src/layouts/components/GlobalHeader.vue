@@ -19,7 +19,7 @@
         <a-dropdown>
           <a-space>
             <a-avatar :src="loginUserStore.loginUser.userAvatar" />
-            {{ loginUserStore.loginUser.userName ?? '无名用户' }}
+            {{ loginUserStore.loginUser.userName ?? '未命名用户' }}
           </a-space>
           <template #overlay>
             <a-menu>
@@ -60,21 +60,10 @@ const router = useRouter()
 const loginUserStore = useLoginUserStore()
 
 const originItems: HeaderMenuItem[] = [
-  {
-    key: '/',
-    label: '首页',
-    path: '/',
-  },
-  {
-    key: '/admin/userManage',
-    label: '用户管理',
-    path: '/admin/userManage',
-  },
-  {
-    key: '/admin/appManage',
-    label: '应用管理',
-    path: '/admin/appManage',
-  },
+  { key: '/', label: '首页', path: '/' },
+  { key: '/admin/userManage', label: '用户管理', path: '/admin/userManage' },
+  { key: '/admin/appManage', label: '应用管理', path: '/admin/appManage' },
+  { key: '/admin/chatHistoryManage', label: '对话管理', path: '/admin/chatHistoryManage' },
 ]
 
 const menuItems = computed<MenuProps['items']>(() =>
@@ -102,6 +91,9 @@ const handleMenuClick: MenuProps['onClick'] = (event) => {
 }
 
 const selectedKeys = computed(() => {
+  if (route.path.startsWith('/admin/chatHistoryManage')) {
+    return ['/admin/chatHistoryManage']
+  }
   if (route.path.startsWith('/admin/appManage')) {
     return ['/admin/appManage']
   }

@@ -14,9 +14,7 @@
       <div class="basic-layout__content-inner">
         <div class="basic-layout__route-view">
           <RouterView v-slot="{ Component }">
-            <keep-alive include="HomePage">
-              <component :is="Component" />
-            </keep-alive>
+            <component :is="Component" />
           </RouterView>
         </div>
       </div>

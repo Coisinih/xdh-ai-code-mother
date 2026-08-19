@@ -28,3 +28,12 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+mybatis-flex:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.xdh.xdhaicodemother.mapper: info
+    com.mybatisflex: info

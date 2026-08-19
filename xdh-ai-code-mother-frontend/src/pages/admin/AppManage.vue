@@ -8,7 +8,7 @@
             <a-input
               v-model:value="searchForm.appName"
               allow-clear
-              placeholder="按应用名称搜索"
+              placeholder="输入应用名称"
               @press-enter="handleSearch"
             />
           </div>
@@ -16,9 +16,10 @@
           <div class="app-manage-page__search-item">
             <span class="app-manage-page__search-label">创建者：</span>
             <a-input
-              v-model:value="searchForm.userName"
+              v-model:value="searchForm.userId"
               allow-clear
-              placeholder="按创建者用户名搜索"
+              placeholder="输入用户ID"
+              inputmode="numeric"
               @press-enter="handleSearch"
             />
           </div>
@@ -71,7 +72,7 @@
           </template>
 
           <template v-else-if="column.dataIndex === 'userName'">
-            {{ record.user?.userName || '-' }}
+            {{ record.user?.userName ? `${record.user.userName}(${record.user.id})` : '-' }}
           </template>
 
           <template v-else-if="column.dataIndex === 'codeGenType'">
@@ -138,12 +139,13 @@ const CODE_GEN_TYPE_MAP = {
 
 type AdminAppSearchForm = {
   appName: string
-  userName: string
+  userId?: string
   codeGenType?: keyof typeof CODE_GEN_TYPE_MAP
   onlyFeatured: boolean
 }
 
-type AdminAppListRequest = API.AppQueryRequest & {
+type AdminAppListRequest = Omit<API.AppQueryRequest, 'userId'> & {
+  userId?: string
   userName?: string
 }
 
@@ -162,7 +164,7 @@ const searchParams = reactive<API.AppQueryRequest>({
 
 const searchForm = reactive<AdminAppSearchForm>({
   appName: '',
-  userName: '',
+  userId: undefined,
   codeGenType: undefined,
   onlyFeatured: false,
 })
@@ -176,7 +178,7 @@ const columns = [
   { title: 'ID', dataIndex: 'id', width: 120 },
   { title: '应用名称', dataIndex: 'appName', width: 220, ellipsis: true },
   { title: '封面', dataIndex: 'cover', width: 110 },
-  { title: '创建者', dataIndex: 'userName', width: 160 },
+  { title: '创建者(用户ID)', dataIndex: 'userName', width: 200 },
   { title: '生成类型', dataIndex: 'codeGenType', width: 150 },
   { title: '应用类型', dataIndex: 'featuredStatus', width: 130 },
   { title: '部署时间', dataIndex: 'deployedTime', width: 180 },
@@ -207,14 +209,14 @@ const getCodeGenTypeText = (codeGenType?: string) => {
 
 const buildSearchPayload = (): AdminAppListRequest => {
   const appName = searchForm.appName.trim()
-  const userName = searchForm.userName.trim()
+  const userId = searchForm.userId?.trim()
 
   return {
     ...searchParams,
     appName: appName || undefined,
+    userId: userId || undefined,
     codeGenType: searchForm.codeGenType || undefined,
     priority: searchForm.onlyFeatured ? GOOD_APP_PRIORITY : undefined,
-    userName: userName || undefined,
   }
 }
 
@@ -240,7 +242,7 @@ const handleSearch = () => {
 
 const resetSearch = () => {
   searchForm.appName = ''
-  searchForm.userName = ''
+  searchForm.userId = undefined
   searchForm.codeGenType = undefined
   searchForm.onlyFeatured = false
   searchParams.pageNum = 1
