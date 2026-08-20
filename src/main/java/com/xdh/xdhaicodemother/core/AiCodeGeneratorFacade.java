@@ -1,7 +1,7 @@
 package com.xdh.xdhaicodemother.core;
 
 import cn.hutool.core.exceptions.ExceptionUtil;
-import com.xdh.xdhaicodemother.ai.AiCodeGeneratorService;
+import com.xdh.xdhaicodemother.ai.AiCodeGeneratorServiceFactory;
 import com.xdh.xdhaicodemother.ai.model.HtmlCodeResult;
 import com.xdh.xdhaicodemother.ai.model.MultiFileCodeResult;
 import com.xdh.xdhaicodemother.core.parser.CodeParserExcutor;
@@ -27,7 +27,7 @@ import java.io.File;
 @Slf4j
 public class AiCodeGeneratorFacade {
     @Resource
-    AiCodeGeneratorService aiCodeGeneratorService;
+    AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
 
     /**
@@ -42,11 +42,11 @@ public class AiCodeGeneratorFacade {
 
         return switch (codeGenType) {
             case HTML -> {
-                HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHTMLCode(userMessage);
+                HtmlCodeResult htmlCodeResult = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateHTMLCode(userMessage);
                 yield CodeSaverExcutor.codeFileSaver(htmlCodeResult, codeGenType, appId);
             }
             case MULTI_FILE -> {
-                MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorService.generateMultiFileCode(userMessage);
+                MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateMultiFileCode(userMessage);
                 yield CodeSaverExcutor.codeFileSaver(multiFileCodeResult, codeGenType, appId);
             }
             default ->
@@ -66,11 +66,11 @@ public class AiCodeGeneratorFacade {
 
         return switch (codeGenType) {
             case HTML -> {
-                Flux<String> res = aiCodeGeneratorService.generateHTMLCodeStream(userMessage);
+                Flux<String> res = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateHTMLCodeStream(userMessage);
                 yield processCodeStream(res, codeGenType, appId);
             }
             case MULTI_FILE -> {
-                Flux<String> res = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
+                Flux<String> res = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateMultiFileCodeStream(userMessage);
                 yield processCodeStream(res, codeGenType, appId);
             }
             default ->
@@ -100,83 +100,5 @@ public class AiCodeGeneratorFacade {
                         log.error("保存失败:{}", ExceptionUtil.stacktraceToString(e));
                     }
                 });
-    }
-
-
-    /*
-     * ----------------------------以下已经统一抽象封装为上面的方法---------------------------------------------------
-     */
-
-    /**
-     * 生成 HTML 模式代码并保存（流式）
-     *
-     * @param userMessage 用户提示词
-     * @return 生成的文件
-     * @deprecated
-     */
-    @SuppressWarnings("all")
-    private Flux<String> generateAndSaveHtmlCodeStream(String userMessage) {
-        Flux<String> res = aiCodeGeneratorService.generateHTMLCodeStream(userMessage);
-        StringBuilder sb = new StringBuilder();
-        return res.doOnNext(sb::append)
-                .doOnComplete(() -> {
-                    try {
-                        // 全部输出完成后，解析内容并保存到文件中
-                        HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(sb.toString());
-                        File file = CodeFileSave.saveHtmlCodeResult(htmlCodeResult);
-                        log.info("保存成功，路径为：{}", file.getAbsolutePath());
-                    } catch (Exception e) {
-                        log.error("保存失败:{}", ExceptionUtil.stacktraceToString(e));
-                    }
-                });
-    }
-
-    /**
-     * 生成 多文件模式 代码并保持（流式）
-     *
-     * @param userMessage 用户提示词
-     * @return 生成的文件
-     * @deprecated
-     */
-    @SuppressWarnings("all")
-    private Flux<String> generateAndSaveMultiFileCodeStream(String userMessage) {
-        Flux<String> res = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
-        StringBuilder sb = new StringBuilder();
-        return res.doOnNext(sb::append)
-                .doOnComplete(() -> {
-                    try {
-                        // 全部输出完成后，解析内容并保存到文件中
-                        MultiFileCodeResult multiFileCodeResult = CodeParser.parseMultiFileCode(sb.toString());
-                        File file = CodeFileSave.saveMultiFileCodeResult(multiFileCodeResult);
-                        log.info("保存成功，路径为：{}", file.getAbsolutePath());
-                    } catch (Exception e) {
-                        log.error("保存失败:{}", ExceptionUtil.stacktraceToString(e));
-                    }
-                });
-    }
-
-    /**
-     * 生成 HTML 模式代码并保存
-     *
-     * @param userMessage 用户提示词
-     * @return 生成的文件
-     */
-    @SuppressWarnings("all")
-    private File generateAndSaveHtmlCode(String userMessage) {
-        HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHTMLCode(userMessage);
-        return CodeFileSave.saveHtmlCodeResult(htmlCodeResult);
-    }
-
-
-    /**
-     * 生成 多文件模式 代码并保持
-     *
-     * @param userMessage 用户提示词
-     * @return 生成的文件
-     */
-    @SuppressWarnings("all")
-    private File generateAndSaveMultiFileCode(String userMessage) {
-        MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorService.generateMultiFileCode(userMessage);
-        return CodeFileSave.saveMultiFileCodeResult(multiFileCodeResult);
     }
 }
