@@ -1,6 +1,7 @@
 package com.xdh.xdhaicodemother.core;
 
 import cn.hutool.core.exceptions.ExceptionUtil;
+import com.xdh.xdhaicodemother.ai.AiCodeGeneratorService;
 import com.xdh.xdhaicodemother.ai.AiCodeGeneratorServiceFactory;
 import com.xdh.xdhaicodemother.ai.model.HtmlCodeResult;
 import com.xdh.xdhaicodemother.ai.model.MultiFileCodeResult;
@@ -39,14 +40,14 @@ public class AiCodeGeneratorFacade {
      */
     public File generateAndSaveCode(CodeGenTypeEnum codeGenType, String userMessage, Long appId) {
         ThrowUtils.throwIf(codeGenType == null, ErrorCode.PARAMS_ERROR, "生成类型为空");
-
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
         return switch (codeGenType) {
             case HTML -> {
-                HtmlCodeResult htmlCodeResult = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateHTMLCode(userMessage);
+                HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHTMLCode(userMessage);
                 yield CodeSaverExcutor.codeFileSaver(htmlCodeResult, codeGenType, appId);
             }
             case MULTI_FILE -> {
-                MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateMultiFileCode(userMessage);
+                MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorService.generateMultiFileCode(userMessage);
                 yield CodeSaverExcutor.codeFileSaver(multiFileCodeResult, codeGenType, appId);
             }
             default ->
@@ -64,13 +65,15 @@ public class AiCodeGeneratorFacade {
     public Flux<String> generateAndSaveCodeStream(CodeGenTypeEnum codeGenType, String userMessage, Long appId) {
         ThrowUtils.throwIf(codeGenType == null, ErrorCode.PARAMS_ERROR, "生成类型为空");
 
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
+
         return switch (codeGenType) {
             case HTML -> {
-                Flux<String> res = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateHTMLCodeStream(userMessage);
+                Flux<String> res = aiCodeGeneratorService.generateHTMLCodeStream(userMessage);
                 yield processCodeStream(res, codeGenType, appId);
             }
             case MULTI_FILE -> {
-                Flux<String> res = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId).generateMultiFileCodeStream(userMessage);
+                Flux<String> res = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
                 yield processCodeStream(res, codeGenType, appId);
             }
             default ->
