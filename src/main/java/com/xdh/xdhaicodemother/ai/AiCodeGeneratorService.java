@@ -2,7 +2,9 @@ package com.xdh.xdhaicodemother.ai;
 
 import com.xdh.xdhaicodemother.ai.model.HtmlCodeResult;
 import com.xdh.xdhaicodemother.ai.model.MultiFileCodeResult;
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -53,4 +55,13 @@ public interface AiCodeGeneratorService {
      */
     @SystemMessage(fromResource = "prompts/codegen-multi-file-system-prompt.txt")
     Flux<String> generateMultiFileCodeStream(String userMessage);
+
+    /**
+     * 生成 Vue 项目代码（流式）
+     *
+     * @param userMessage 用户消息
+     * @return 生成的内容
+     */
+    @SystemMessage(fromResource = "prompts/codegen-vue-project-system-prompt.txt")
+    Flux<String> generateVueProjectCodeStream(@MemoryId long appId, @UserMessage String userMessage);
 }

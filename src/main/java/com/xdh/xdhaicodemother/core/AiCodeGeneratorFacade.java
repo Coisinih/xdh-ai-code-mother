@@ -40,7 +40,7 @@ public class AiCodeGeneratorFacade {
      */
     public File generateAndSaveCode(CodeGenTypeEnum codeGenType, String userMessage, Long appId) {
         ThrowUtils.throwIf(codeGenType == null, ErrorCode.PARAMS_ERROR, "生成类型为空");
-        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenType);
         return switch (codeGenType) {
             case HTML -> {
                 HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHTMLCode(userMessage);
@@ -65,7 +65,7 @@ public class AiCodeGeneratorFacade {
     public Flux<String> generateAndSaveCodeStream(CodeGenTypeEnum codeGenType, String userMessage, Long appId) {
         ThrowUtils.throwIf(codeGenType == null, ErrorCode.PARAMS_ERROR, "生成类型为空");
 
-        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId);
+        AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenType);
 
         return switch (codeGenType) {
             case HTML -> {
@@ -76,6 +76,7 @@ public class AiCodeGeneratorFacade {
                 Flux<String> res = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
                 yield processCodeStream(res, codeGenType, appId);
             }
+            case VUE_PROJECT -> aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
             default ->
                     throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持的生成类型：" + codeGenType.getValue());
         };
