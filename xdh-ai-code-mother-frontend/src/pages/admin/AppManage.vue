@@ -124,6 +124,7 @@ import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 
 import { adminDeleteApp, adminListAppVoByPage, adminUpdateApp } from '@/api/appController'
+import { codeGenTypeOptions, getCodeGenTypeText, type CodeGenType } from '@/constants/codeGenType'
 import { formatDateTime } from '@/utils/app'
 import { openInNewTab } from '@/utils/browser'
 import { confirmDangerAction } from '@/utils/confirm'
@@ -132,15 +133,10 @@ import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 const GOOD_APP_PRIORITY = 99
 const DEFAULT_APP_PRIORITY = 0
 
-const CODE_GEN_TYPE_MAP = {
-  html: '原生 HTML 模式',
-  multi_file: '原生多文件模式',
-} as const
-
 type AdminAppSearchForm = {
   appName: string
   userId?: string
-  codeGenType?: keyof typeof CODE_GEN_TYPE_MAP
+  codeGenType?: CodeGenType
   onlyFeatured: boolean
 }
 
@@ -169,11 +165,6 @@ const searchForm = reactive<AdminAppSearchForm>({
   onlyFeatured: false,
 })
 
-const codeGenTypeOptions = [
-  { label: '原生 HTML 模式', value: 'html' },
-  { label: '原生多文件模式', value: 'multi_file' },
-]
-
 const columns = [
   { title: 'ID', dataIndex: 'id', width: 120 },
   { title: '应用名称', dataIndex: 'appName', width: 220, ellipsis: true },
@@ -197,14 +188,6 @@ const pagination = computed(() => ({
 
 const isFeaturedApp = (record: API.AppVO) => {
   return (record.priority ?? DEFAULT_APP_PRIORITY) >= GOOD_APP_PRIORITY
-}
-
-const getCodeGenTypeText = (codeGenType?: string) => {
-  if (!codeGenType) {
-    return '-'
-  }
-
-  return CODE_GEN_TYPE_MAP[codeGenType as keyof typeof CODE_GEN_TYPE_MAP] || codeGenType
 }
 
 const buildSearchPayload = (): AdminAppListRequest => {

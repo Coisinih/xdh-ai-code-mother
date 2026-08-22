@@ -120,7 +120,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(!FileUtil.exist(baseAppPath) || !FileUtil.isDirectory(baseAppPath), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成应用代码");
 
         // 6. Vue 项目特殊处理：执行构建
-        CodeGenTypeEnum codeGenType = CodeGenTypeEnum.valueOf(app.getCodeGenType());
+        CodeGenTypeEnum codeGenType = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
         if(CodeGenTypeEnum.VUE_PROJECT == codeGenType){
             // Vue 项目需要构建
             boolean buildSuccess = vueProjectBuilder.buildProject(baseAppPath);

@@ -1,8 +1,8 @@
 import dayjs from 'dayjs'
 
 import { APP_DEPLOY_BASE_URL, APP_PREVIEW_BASE_URL } from '@/config/runtime'
+import { CodeGenTypeEnum } from '@/constants/codeGenType'
 
-export const DEFAULT_CODE_GEN_TYPE = 'vue'
 export type AppIdentifier = string | number
 
 export const getAppIdString = (appId?: AppIdentifier | null) => {
@@ -20,25 +20,13 @@ export const toApiRequestId = (appId: AppIdentifier) => {
 export const resolveAppPreviewUrl = (app?: Partial<API.AppVO>) => {
   const appId = getAppIdString(app?.id)
   const codeGenType = app?.codeGenType
-  const deployKey = app?.deployKey
 
-  if (!appId && !deployKey) {
-    return ''
+  const baseUrl = `${APP_PREVIEW_BASE_URL}/${codeGenType}_${appId}/`
+  // 如果是 Vue 项目，浏览地址需要添加 dist 后缀
+  if (codeGenType === CodeGenTypeEnum.VUE_PROJECT) {
+    return `${baseUrl}dist/index.html`
   }
-
-  if (appId && codeGenType) {
-    return `${APP_PREVIEW_BASE_URL}/${codeGenType}_${appId}/`
-  }
-
-  if (deployKey) {
-    return `${APP_PREVIEW_BASE_URL}/${deployKey}/`
-  }
-
-  if (appId) {
-    return `${APP_PREVIEW_BASE_URL}/${DEFAULT_CODE_GEN_TYPE}_${appId}/`
-  }
-
-  return ''
+  return baseUrl
 }
 
 export const resolveAppDeployUrl = (app?: Partial<API.AppVO>) => {

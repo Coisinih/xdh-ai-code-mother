@@ -150,7 +150,7 @@ const pagination = computed(() => ({
   pageSize: searchParams.pageSize ?? 10,
   total: total.value,
   showSizeChanger: true,
-  showTotal: (value: number) => `�?${value} 条`,
+  showTotal: (value: number) => `共${value} 条`,
 }))
 
 const buildSearchPayload = (): API.ChatHistoryQueryRequest => {

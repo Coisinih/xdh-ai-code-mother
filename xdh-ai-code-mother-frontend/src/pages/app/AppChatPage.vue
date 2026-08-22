@@ -769,7 +769,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 18px;
+  gap: 1px;
   min-height: 0;
   padding: 22px;
   overflow-y: auto;
@@ -790,6 +790,10 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+.chat-message + .chat-message {
+  margin-top: 8px;
+}
+
 .chat-message--user {
   justify-content: flex-end;
 }
@@ -800,7 +804,7 @@ onBeforeUnmount(() => {
 
 .chat-message__bubble {
   max-width: min(86%, 640px);
-  padding: 10px 18px;
+  padding: 6px 14px;
   word-break: break-word;
   border-radius: 20px;
 }
@@ -817,7 +821,7 @@ onBeforeUnmount(() => {
 
 .chat-message__content {
   font-size: 1rem;
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
 .chat-message--user .chat-message__content {
