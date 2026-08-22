@@ -9,6 +9,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xdh.xdhaicodemother.constant.AppConstant;
 import com.xdh.xdhaicodemother.core.AiCodeGeneratorFacade;
+import com.xdh.xdhaicodemother.core.builder.VueProjectBuilder;
 import com.xdh.xdhaicodemother.core.handle.StreamHandlerExecutor;
 import com.xdh.xdhaicodemother.exception.BusinessException;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
@@ -56,6 +57,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
+
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
 
     /**
@@ -114,6 +118,19 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 5.校验路径是否存在
         String baseAppPath = CharSequenceUtil.format("{}{}{}_{}", AppConstant.CODE_OUTPUT_ROOT_DIR, File.separator, app.getCodeGenType(), app.getId());
         ThrowUtils.throwIf(!FileUtil.exist(baseAppPath) || !FileUtil.isDirectory(baseAppPath), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成应用代码");
+
+        // 6. Vue 项目特殊处理：执行构建
+        CodeGenTypeEnum codeGenType = CodeGenTypeEnum.valueOf(app.getCodeGenType());
+        if(CodeGenTypeEnum.VUE_PROJECT == codeGenType){
+            // Vue 项目需要构建
+            boolean buildSuccess = vueProjectBuilder.buildProject(baseAppPath);
+            ThrowUtils.throwIf(!buildSuccess, ErrorCode.SYSTEM_ERROR, "Vue 项目构建失败，请检查代码和依赖");
+            // 验证 dist 目录是否生成
+            File distDir = new File(baseAppPath, "dist");
+            ThrowUtils.throwIf(!distDir.exists(), ErrorCode.SYSTEM_ERROR, "Vue 项目构建完成但未生成 dist 目录");
+            baseAppPath = baseAppPath + File.separator + "dist";
+            log.info("Vue 项目构建成功，将部署 dist 目录: {}", distDir.getAbsolutePath());
+        }
 
         // 7.复制代码文件目录到部署目录
         try {
