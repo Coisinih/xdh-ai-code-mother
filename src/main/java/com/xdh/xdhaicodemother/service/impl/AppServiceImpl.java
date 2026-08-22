@@ -9,6 +9,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xdh.xdhaicodemother.constant.AppConstant;
 import com.xdh.xdhaicodemother.core.AiCodeGeneratorFacade;
+import com.xdh.xdhaicodemother.core.handle.StreamHandlerExecutor;
 import com.xdh.xdhaicodemother.exception.BusinessException;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
 import com.xdh.xdhaicodemother.exception.ThrowUtils;
@@ -53,6 +54,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private ChatHistoryService chatHistoryService;
 
+    @Resource
+    private StreamHandlerExecutor streamHandlerExecutor;
+
 
     /**
      * 通过对话生成应用代码
@@ -82,26 +86,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 4.1 保存用户消息
         chatHistoryService.addChatMessage(userMessage, loginUser.getId(), appId, ChatHistoryMessageTypeEnum.USER.getValue());
 
-        // 5.生成应用代码
-        Flux<String> res = aiCodeGeneratorFacade.generateAndSaveCodeStream(codeGenType, userMessage, appId);
-        // 5.1 保存 ai 消息
-        StringBuilder resBuilder = new StringBuilder();
-        return res.map(chunk -> {
-                    // 拼接完整的 ai 消息
-                    resBuilder.append(chunk);
-                    return chunk;
-                })
-                .doOnComplete(() -> {
-                    // 6.流式返回结束后，保存 ai 消息
-                    String aiResponse = resBuilder.toString();
-                    if (CharSequenceUtil.isNotBlank(aiResponse)) {
-                        chatHistoryService.addChatMessage(aiResponse, loginUser.getId(), appId, ChatHistoryMessageTypeEnum.AI.getValue());
-                    }
-                })
-                .doOnError(e -> {
-                    String errorMsg = "AI 回复失败：" + e.getMessage();
-                    chatHistoryService.addChatMessage(errorMsg, loginUser.getId(), appId, ChatHistoryMessageTypeEnum.AI.getValue());
-                });
+        // 5. 调用 AI 生成应用代码
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(codeGenType, userMessage, appId);
+        // 5.1 收集 AI 响应内容，并在完成后记录到对话历史
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenType);
     }
 
     @Override

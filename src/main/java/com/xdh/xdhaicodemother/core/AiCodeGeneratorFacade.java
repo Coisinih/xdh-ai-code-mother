@@ -1,16 +1,24 @@
 package com.xdh.xdhaicodemother.core;
 
 import cn.hutool.core.exceptions.ExceptionUtil;
+import cn.hutool.json.JSONUtil;
 import com.xdh.xdhaicodemother.ai.AiCodeGeneratorService;
 import com.xdh.xdhaicodemother.ai.AiCodeGeneratorServiceFactory;
 import com.xdh.xdhaicodemother.ai.model.HtmlCodeResult;
 import com.xdh.xdhaicodemother.ai.model.MultiFileCodeResult;
+import com.xdh.xdhaicodemother.ai.model.message.AiResponseMessage;
+import com.xdh.xdhaicodemother.ai.model.message.ToolExecutedMessage;
+import com.xdh.xdhaicodemother.ai.model.message.ToolRequestMessage;
 import com.xdh.xdhaicodemother.core.parser.CodeParserExcutor;
 import com.xdh.xdhaicodemother.core.saver.CodeSaverExcutor;
 import com.xdh.xdhaicodemother.exception.BusinessException;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
 import com.xdh.xdhaicodemother.exception.ThrowUtils;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialToolCall;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -76,7 +84,10 @@ public class AiCodeGeneratorFacade {
                 Flux<String> res = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
                 yield processCodeStream(res, codeGenType, appId);
             }
-            case VUE_PROJECT -> aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+            case VUE_PROJECT -> {
+                TokenStream codeStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
+                yield processTokenStream(codeStream);
+            }
             default ->
                     throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持的生成类型：" + codeGenType.getValue());
         };
@@ -105,4 +116,34 @@ public class AiCodeGeneratorFacade {
                     }
                 });
     }
+
+    /**
+     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
+     *
+     * @param tokenStream TokenStream 对象
+     * @return Flux<String> 流式响应
+     */
+    private Flux<String> processTokenStream(TokenStream tokenStream) {
+        return Flux.create((sink ->
+                tokenStream.onPartialResponse((String partialResponse) -> {
+                            AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
+                            sink.next(JSONUtil.toJsonStr(aiResponseMessage));
+                        })
+                        .onPartialToolCall((PartialToolCall partialToolCall) -> {
+                            ToolRequestMessage toolRequestMessage = new ToolRequestMessage(partialToolCall);
+                            sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+                        })
+                        .onToolExecuted((ToolExecution toolExecution) -> {
+                            ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                            sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                        })
+                        .onCompleteResponse((ChatResponse response) -> sink.complete())
+                        .onError((Throwable error) -> {
+                            log.error("将 TokenStream 转换为 Flux<String>失败:{}", ExceptionUtil.stacktraceToString(error));
+                            sink.error(error);
+                        })
+                        .start()
+        ));
+    }
+
 }
