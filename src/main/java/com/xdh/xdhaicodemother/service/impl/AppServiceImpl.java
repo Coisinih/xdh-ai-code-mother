@@ -24,6 +24,7 @@ import com.xdh.xdhaicodemother.model.vo.AppVO;
 import com.xdh.xdhaicodemother.model.vo.UserVO;
 import com.xdh.xdhaicodemother.service.AppService;
 import com.xdh.xdhaicodemother.service.ChatHistoryService;
+import com.xdh.xdhaicodemother.service.ScreenshotService;
 import com.xdh.xdhaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +58,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
+
+    @Resource
+    private ScreenshotService screenshotService;
 
     @Resource
     private VueProjectBuilder vueProjectBuilder;
@@ -121,7 +125,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         // 6. Vue 项目特殊处理：执行构建
         CodeGenTypeEnum codeGenType = CodeGenTypeEnum.getEnumByValue(app.getCodeGenType());
-        if(CodeGenTypeEnum.VUE_PROJECT == codeGenType){
+        if (CodeGenTypeEnum.VUE_PROJECT == codeGenType) {
             // Vue 项目需要构建
             boolean buildSuccess = vueProjectBuilder.buildProject(baseAppPath);
             ThrowUtils.throwIf(!buildSuccess, ErrorCode.SYSTEM_ERROR, "Vue 项目构建失败，请检查代码和依赖");
@@ -149,7 +153,30 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
 
         // 9.返回部署后可访问的 URL 地址
-        return CharSequenceUtil.format("{}/{}/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        String deployedUrl = CharSequenceUtil.format("{}/{}/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        // 10.应用截图并更新封面
+        generateAppScreenshotAsync(deployedUrl, appId);
+        return deployedUrl;
+    }
+
+    /**
+     * 异步生成应用截图并更新封面
+     *
+     * @param appId  应用ID
+     * @param appUrl 应用访问URL
+     */
+    private void generateAppScreenshotAsync(String appUrl, long appId) {
+        // 使用虚拟线程异步执行
+        Thread.startVirtualThread(() -> {
+            // 调用截图服务生成截图并上传
+            String cosUrl = screenshotService.generateAndUploadScreenshot(appUrl);
+            // 更新应用封面字段
+            App updateApp = new App();
+            updateApp.setId(appId);
+            updateApp.setCover(cosUrl);
+            boolean updateResult = this.updateById(updateApp);
+            ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用封面失败");
+        });
     }
 
     /**

@@ -113,7 +113,7 @@ public class WebScreenshotUtils {
             saveImage(imageFilePath, imageBytes);
             log.info("截图成功，图片路径：{}", imageFilePath);
             // 压缩图片
-            final String COMPRESS_IMAGE_SUFFIX = ".jpg";
+            final String COMPRESS_IMAGE_SUFFIX = "_compress.jpg";
             compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESS_IMAGE_SUFFIX;
             compressImage(imageFilePath, compressedImagePath);
             log.info("压缩图片成功，压缩后图片路径：{}", compressedImagePath);
