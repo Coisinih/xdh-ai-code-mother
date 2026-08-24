@@ -9,6 +9,7 @@ import com.xdh.xdhaicodemother.annotation.AuthCheck;
 import com.xdh.xdhaicodemother.common.BaseResponse;
 import com.xdh.xdhaicodemother.common.DeleteRequest;
 import com.xdh.xdhaicodemother.common.ResultUtils;
+import com.xdh.xdhaicodemother.constant.AppConstant;
 import com.xdh.xdhaicodemother.constant.UserConstant;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
 import com.xdh.xdhaicodemother.exception.ThrowUtils;
@@ -19,15 +20,18 @@ import com.xdh.xdhaicodemother.model.enums.AppConstantEnum;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
 import com.xdh.xdhaicodemother.model.vo.AppVO;
 import com.xdh.xdhaicodemother.service.AppService;
+import com.xdh.xdhaicodemother.service.ProjectDownloadService;
 import com.xdh.xdhaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +52,9 @@ public class AppController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private ProjectDownloadService projectDownloadService;
+
     /**
      * 应用聊天生成代码（流式 SSE）
      *
@@ -57,9 +64,7 @@ public class AppController {
      * @return 生成结果流
      */
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId,
-                                                       @RequestParam String message,
-                                                       HttpServletRequest request) {
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
         // 参数校验
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
         ThrowUtils.throwIf(CharSequenceUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "用户消息不能为空");
@@ -100,6 +105,32 @@ public class AppController {
         // 调用服务部署应用
         String deployUrl = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deployUrl);
+    }
+
+    /**
+     * 下载应用代码
+     *
+     * @param appId    应用ID
+     * @param request  请求
+     * @param response 响应
+     */
+    @GetMapping("/download/{appId}")
+    public void downloadAppCode(@PathVariable Long appId, HttpServletRequest request, HttpServletResponse response) {
+        // 1.基础校验
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        // 2.获取应用信息
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.PARAMS_ERROR, "应用不存在!");
+        // 3.权限校验
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(!app.getUserId().equals(loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "无权限下载该应用代码");
+        // 4.获取代码路径
+        String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + app.getCodeGenType() + "_" + appId;
+        File sourceDir = new File(sourceDirPath);
+        ThrowUtils.throwIf(!sourceDir.exists() || !sourceDir.isDirectory(),
+                ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成代码");
+        // 5.下载项目代码
+        projectDownloadService.downloadProjectAsZip(sourceDirPath, String.valueOf(appId), response);
     }
 
 
