@@ -8,6 +8,9 @@
           </template>
         </a-button>
         <h1 class="app-chat-page__title">{{ appName }}</h1>
+        <a-tag v-if="appDetail?.codeGenType" color="blue" class="code-gen-type-tag">
+          {{ getCodeGenTypeText(appDetail.codeGenType) }}
+        </a-tag>
       </div>
 
       <div class="app-chat-page__header-right">
@@ -217,6 +220,7 @@ import {
 import { openInNewTab } from '@/utils/browser'
 import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
 import 'highlight.js/styles/github.css'
+import { getCodeGenTypeText } from '@/constants/codeGenType.ts'
 
 type ChatRole = 'user' | 'assistant'
 
@@ -252,6 +256,8 @@ const historyHasMore = ref(false)
 const historyTotal = ref(0)
 const messageContainerRef = ref<HTMLElement>()
 const currentAbortController = ref<AbortController>()
+const scrollToBottomFrame = ref<number | null>(null)
+const scrollToBottomPending = ref(false)
 
 const appName = computed(() => getAppDisplayName(appDetail))
 const previewUrl = computed(() => resolveAppPreviewUrl(appDetail))
@@ -328,11 +334,21 @@ const replaceMessages = (source: ChatMessage[]) => {
 }
 
 const scrollMessagesToBottom = async () => {
-  await nextTick()
-  const container = messageContainerRef.value
-  if (container) {
-    container.scrollTop = container.scrollHeight
+  if (scrollToBottomPending.value) {
+    return
   }
+
+  scrollToBottomPending.value = true
+  await nextTick()
+  scrollToBottomFrame.value = window.requestAnimationFrame(() => {
+    const container = messageContainerRef.value
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'auto' })
+    }
+
+    scrollToBottomFrame.value = null
+    scrollToBottomPending.value = false
+  })
 }
 
 const loadAppDetail = async () => {
@@ -541,6 +557,7 @@ const runChat = async (content: string) => {
         onChunk(chunk) {
           assistantContent += chunk
           replaceAssistantContent(assistantMessageId, assistantContent, 'streaming')
+          void scrollMessagesToBottom()
         },
         onDone() {
           receivedDone = true
@@ -765,6 +782,9 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (scrollToBottomFrame.value !== null) {
+    window.cancelAnimationFrame(scrollToBottomFrame.value)
+  }
   currentAbortController.value?.abort()
 })
 </script>
@@ -856,7 +876,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   padding: 22px;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .app-chat-page__load-more {
