@@ -153,7 +153,7 @@
 <script setup lang="ts">
 defineOptions({ name: 'HomePage' })
 
-import { nextTick, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { nextTick, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ArrowUpOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
@@ -173,6 +173,9 @@ const loginUserStore = useLoginUserStore()
 const examplePrompts = ['波普风电商页面', '企业网站', '电商运营后台', '暗黑主题社区']
 
 const HOME_PAGE_SIZE = 6
+
+const HOME_SCROLL_KEY = 'home:scrollY'
+const HOME_LIST_STATE_KEY = 'home:listState'
 
 const prompt = ref('')
 const creatingApp = ref(false)
@@ -369,13 +372,77 @@ const refreshHomeDataIfNeeded = async () => {
   await nextTick()
 }
 
+const saveHomeScroll = () => {
+  const top = window.scrollY || document.documentElement.scrollTop || 0
+  sessionStorage.setItem(HOME_SCROLL_KEY, String(top))
+}
+
+const restoreHomeScroll = () => {
+  const saved = Number(sessionStorage.getItem(HOME_SCROLL_KEY))
+  if (Number.isFinite(saved) && saved > 0) {
+    sessionStorage.removeItem(HOME_SCROLL_KEY)
+    window.scrollTo({ top: saved })
+  }
+}
+
+const saveHomeListState = () => {
+  sessionStorage.setItem(
+    HOME_LIST_STATE_KEY,
+    JSON.stringify({
+      mySearchParams,
+      featuredSearchParams,
+      mySearchKeyword: mySearchKeyword.value,
+      featuredSearchKeyword: featuredSearchKeyword.value,
+    }),
+  )
+}
+
+const restoreHomeListState = () => {
+  const raw = sessionStorage.getItem(HOME_LIST_STATE_KEY)
+  if (!raw) {
+    return
+  }
+
+  sessionStorage.removeItem(HOME_LIST_STATE_KEY)
+  try {
+    const state = JSON.parse(raw) as {
+      mySearchParams?: API.AppQueryRequest
+      featuredSearchParams?: API.AppQueryRequest
+      mySearchKeyword?: string
+      featuredSearchKeyword?: string
+    }
+
+    if (state.mySearchParams) {
+      Object.assign(mySearchParams, state.mySearchParams)
+    }
+    if (state.featuredSearchParams) {
+      Object.assign(featuredSearchParams, state.featuredSearchParams)
+    }
+    mySearchKeyword.value = state.mySearchKeyword ?? ''
+    featuredSearchKeyword.value = state.featuredSearchKeyword ?? ''
+  } catch {
+    // 忽略损坏的状态数据
+  }
+}
+
+const loadHomeDataAndRestoreScroll = async () => {
+  restoreHomeListState()
+  await Promise.allSettled([loadMyApps(), loadFeaturedApps()])
+  await nextTick()
+  restoreHomeScroll()
+}
+
 onActivated(async () => {
   await refreshHomeDataIfNeeded()
 })
 
 onMounted(() => {
-  void loadMyApps()
-  void loadFeaturedApps()
+  void loadHomeDataAndRestoreScroll()
+})
+
+onBeforeUnmount(() => {
+  saveHomeScroll()
+  saveHomeListState()
 })
 </script>
 

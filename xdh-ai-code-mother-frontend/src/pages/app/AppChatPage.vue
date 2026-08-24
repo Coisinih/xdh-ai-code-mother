@@ -14,6 +14,14 @@
         <a-button v-if="deployUrl" size="large" @click="openDeployUrl">访问已部署地址</a-button>
         <a-button
           :disabled="!canDeployApp"
+          :loading="downloading"
+          size="large"
+          @click="handleDownloadCode"
+        >
+          下载代码
+        </a-button>
+        <a-button
+          :disabled="!canDeployApp"
           :loading="deploying"
           size="large"
           type="primary"
@@ -88,7 +96,9 @@
         <div class="app-chat-page__composer">
           <div class="app-chat-page__composer-tools">
             <a-space wrap>
-              <a-button :disabled="!canChatOnApp" @click="fillOptimizePrompt">优化当前应用</a-button>
+              <a-button :disabled="!canChatOnApp" @click="fillOptimizePrompt"
+                >优化当前应用</a-button
+              >
               <a-button disabled>上传素材（待开放）</a-button>
             </a-space>
           </div>
@@ -128,7 +138,9 @@
           </div>
           <a-space v-if="showPreview && previewUrl">
             <a-button @click="openPreviewUrl">新窗口打开</a-button>
-            <a-button v-if="canEditAppInfo" type="link" @click="openEditPage">编辑应用信息</a-button>
+            <a-button v-if="canEditAppInfo" type="link" @click="openEditPage"
+              >编辑应用信息</a-button
+            >
           </a-space>
         </div>
 
@@ -191,7 +203,7 @@ import dayjs from 'dayjs'
 import AppPreviewFrame from '@/components/app/AppPreviewFrame.vue'
 import MarkdownContent from '@/components/chat/MarkdownContent.vue'
 import { useRouteAppId } from '@/composables/useRouteAppId'
-import { deployApp, getAppVoById } from '@/api/appController'
+import { deployApp, downloadAppCode, getAppVoById } from '@/api/appController'
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import aiAssistantAvatar from '@/assets/img_1.png'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -228,6 +240,7 @@ const messages = ref<ChatMessage[]>([])
 const inputMessage = ref('')
 const isStreaming = ref(false)
 const deploying = ref(false)
+const downloading = ref(false)
 const deployUrl = ref('')
 const deploySuccessModalOpen = ref(false)
 const showPreview = ref(false)
@@ -374,7 +387,8 @@ const loadInitialHistory = async () => {
     const page = await loadHistoryPage()
     replaceMessages(page.records)
     historyTotal.value = page.total || page.records.length
-    historyHasMore.value = page.records.length === HISTORY_PAGE_SIZE && historyTotal.value > page.records.length
+    historyHasMore.value =
+      page.records.length === HISTORY_PAGE_SIZE && historyTotal.value > page.records.length
 
     if (String(route.query.view) === '1' || historyTotal.value >= 2) {
       showPreview.value = true
@@ -431,7 +445,11 @@ const appendMessage = (messageItem: ChatMessage) => {
   void scrollMessagesToBottom()
 }
 
-const replaceAssistantContent = (messageId: string, content: string, status: ChatMessage['status']) => {
+const replaceAssistantContent = (
+  messageId: string,
+  content: string,
+  status: ChatMessage['status'],
+) => {
   const targetMessage = messages.value.find((item) => item.id === messageId)
   if (!targetMessage) {
     return
@@ -601,6 +619,72 @@ const handleDeploy = async () => {
   }
 }
 
+const getResponseHeader = (headers: unknown, name: string) => {
+  if (!headers || typeof headers !== 'object') {
+    return ''
+  }
+
+  const record = headers as Record<string, unknown>
+  const value = record[name] ?? record[name.toLowerCase()]
+  return typeof value === 'string' ? value : ''
+}
+
+const parseDownloadFileName = (contentDisposition?: string) => {
+  if (!contentDisposition) {
+    return ''
+  }
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1])
+  }
+
+  const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
+  return filenameMatch?.[1]?.trim() || ''
+}
+
+const triggerDownload = (blob: Blob, filename: string) => {
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(objectUrl)
+}
+
+const handleDownloadCode = async () => {
+  if (!appDetail.id || !canDeployApp.value) {
+    return
+  }
+
+  downloading.value = true
+  try {
+    const res = await downloadAppCode(
+      { appId: toApiRequestId(appDetail.id) },
+      { responseType: 'blob' },
+    )
+
+    const blob = res.data as Blob
+    // 后端异常时返回的是 JSON，而不是 zip 文件，需要解析并提示错误
+    if (blob.type?.includes('application/json')) {
+      const errorData = JSON.parse(await blob.text()) as { message?: string }
+      message.error(errorData.message || '下载失败，请稍后再试')
+      return
+    }
+
+    const contentDisposition = getResponseHeader(res.headers, 'content-disposition')
+    const filename = parseDownloadFileName(contentDisposition) || `${appName.value}.zip`
+
+    triggerDownload(blob, filename)
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '下载失败，请稍后再试')
+  } finally {
+    downloading.value = false
+  }
+}
+
 const openPreviewUrl = () => {
   openInNewTab(previewUrl.value)
 }
@@ -699,8 +783,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(114, 255, 227, 0.2), transparent 28%),
-    radial-gradient(circle at right top, rgba(118, 149, 255, 0.18), transparent 24%),
-    #f7fbff;
+    radial-gradient(circle at right top, rgba(118, 149, 255, 0.18), transparent 24%), #f7fbff;
 }
 
 .app-chat-page__header {
