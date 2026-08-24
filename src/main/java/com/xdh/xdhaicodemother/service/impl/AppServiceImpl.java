@@ -1,5 +1,6 @@
 package com.xdh.xdhaicodemother.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.IORuntimeException;
@@ -7,6 +8,7 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.xdh.xdhaicodemother.ai.AiCodeGenTypeRoutingService;
 import com.xdh.xdhaicodemother.constant.AppConstant;
 import com.xdh.xdhaicodemother.core.AiCodeGeneratorFacade;
 import com.xdh.xdhaicodemother.core.builder.VueProjectBuilder;
@@ -15,6 +17,7 @@ import com.xdh.xdhaicodemother.exception.BusinessException;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
 import com.xdh.xdhaicodemother.exception.ThrowUtils;
 import com.xdh.xdhaicodemother.mapper.AppMapper;
+import com.xdh.xdhaicodemother.model.dto.app.AppAddRequest;
 import com.xdh.xdhaicodemother.model.dto.app.AppQueryRequest;
 import com.xdh.xdhaicodemother.model.entity.App;
 import com.xdh.xdhaicodemother.model.entity.User;
@@ -65,6 +68,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private VueProjectBuilder vueProjectBuilder;
 
+    @Resource
+    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+
 
     /**
      * 通过对话生成应用代码
@@ -98,6 +104,26 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(codeGenType, userMessage, appId);
         // 5.1 收集 AI 响应内容，并在完成后记录到对话历史
         return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenType);
+    }
+
+    @Override
+    public long createApp(User loginUser, AppAddRequest appAddRequest) {
+        // 参数校验
+        String initPrompt = appAddRequest.getInitPrompt();
+        ThrowUtils.throwIf(CharSequenceUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR);
+        // 创建app
+        App app = new App();
+        BeanUtil.copyProperties(appAddRequest, app);
+        app.setUserId(loginUser.getId());
+        // 应用名称暂时为 initPrompt 的前 12 位
+        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+        // AI 智能路由
+        CodeGenTypeEnum codeType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
+        app.setCodeGenType(codeType.getValue());
+
+        boolean result = this.save(app);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return app.getId();
     }
 
     @Override

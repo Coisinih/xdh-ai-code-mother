@@ -143,26 +143,10 @@ public class AppController {
      */
     @PostMapping("/add")
     public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
-        // 1.参数校验
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
-        String initPrompt = appAddRequest.getInitPrompt();
-        ThrowUtils.throwIf(CharSequenceUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR);
-
-        // 2.获取当前的用户
         User loginUser = userService.getLoginUser(request);
-
-        // 3.创建应用入库
-        App app = new App();
-        BeanUtil.copyProperties(appAddRequest, app);
-        app.setUserId(loginUser.getId());
-        // 应用名称暂时为 initPrompt 的前 12 位
-        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // 暂时设置为 vue 项目生成
-        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
-
-        boolean result = appService.save(app);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(app.getId());
+        long appId = appService.createApp(loginUser, appAddRequest);
+        return ResultUtils.success(appId);
     }
 
     /**

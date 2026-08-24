@@ -2,6 +2,7 @@ package com.xdh.xdhaicodemother.service;
 
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
+import com.xdh.xdhaicodemother.model.dto.app.AppAddRequest;
 import com.xdh.xdhaicodemother.model.dto.app.AppQueryRequest;
 import com.xdh.xdhaicodemother.model.entity.App;
 import com.xdh.xdhaicodemother.model.entity.User;
@@ -18,6 +19,8 @@ import java.util.List;
  */
 public interface AppService extends IService<App> {
     Flux<String> chatToGenCode(String userMessage, Long appId, User loginUser);
+
+    long createApp(User loginUser, AppAddRequest appAddRequest);
 
     String deployApp(Long appId, User loginUser);
 
