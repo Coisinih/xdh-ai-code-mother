@@ -48,7 +48,11 @@ export const streamChatToGenCode = async (
   handlers: StreamHandlers,
   signal?: AbortSignal
 ) => {
-  const url = new URL(`${API_BASE_URL}/app/chat/gen/code`)
+  // API_BASE_URL may be a relative Vite proxy path such as /api.
+  const url = new URL(
+    `${API_BASE_URL}/app/chat/gen/code`,
+    globalThis.location.origin,
+  )
   url.searchParams.set('appId', String(appId))
   url.searchParams.set('message', message)
 

@@ -7,11 +7,13 @@
 
     <iframe
       v-else-if="shouldShowFrame"
+      ref="iframeRef"
       :key="iframeKey"
       :src="previewUrl"
       :style="iframeStyle"
       class="app-preview-frame__iframe"
       :title="iframeTitle"
+      @load="handleIframeLoad"
     />
 
     <a-empty v-else :description="emptyDescription" />
@@ -19,8 +21,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { CSSProperties } from 'vue'
+
+const emit = defineEmits<{
+  iframeLoad: [iframe: HTMLIFrameElement]
+}>()
 
 const props = withDefaults(
   defineProps<{
@@ -53,9 +59,24 @@ const shouldShowFrame = computed(() => {
   return props.showPreview && Boolean(props.previewUrl)
 })
 
+const iframeRef = ref<HTMLIFrameElement>()
+
 const iframeStyle = computed<CSSProperties>(() => ({
   minHeight: props.minHeight || undefined,
 }))
+
+const handleIframeLoad = () => {
+  if (!iframeRef.value) {
+    return
+  }
+
+  emit('iframeLoad', iframeRef.value)
+}
+
+defineExpose({
+  getIframeEl: () => iframeRef.value,
+  iframeRef,
+})
 </script>
 
 <style scoped>

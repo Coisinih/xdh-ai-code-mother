@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="app-chat-page">
     <header class="app-chat-page__header">
       <div class="app-chat-page__header-left">
@@ -14,22 +14,41 @@
       </div>
 
       <div class="app-chat-page__header-right">
+        <a-button
+          :disabled="!appDetail.id"
+          class="app-chat-page__detail-trigger"
+          size="large"
+          @click="openAppDetailModal"
+        >
+          <template #icon>
+            <InfoCircleOutlined />
+          </template>
+          应用详情
+        </a-button>
         <a-button v-if="deployUrl" size="large" @click="openDeployUrl">访问已部署地址</a-button>
         <a-button
           :disabled="!canDeployApp"
+          class="app-chat-page__download-btn"
           :loading="downloading"
           size="large"
           @click="handleDownloadCode"
         >
+          <template #icon>
+            <DownloadOutlined />
+          </template>
           下载代码
         </a-button>
         <a-button
           :disabled="!canDeployApp"
+          class="app-chat-page__deploy-btn"
           :loading="deploying"
           size="large"
           type="primary"
           @click="handleDeploy"
         >
+          <template #icon>
+            <RocketOutlined />
+          </template>
           {{ hasDeployedApp ? '重新部署' : '部署' }}
         </a-button>
       </div>
@@ -106,6 +125,21 @@
             </a-space>
           </div>
 
+          <a-alert
+            v-if="selectedElement"
+            class="app-chat-page__selected-element-alert"
+            closable
+            message="已选中页面元素"
+            type="info"
+            @close="clearSelectedVisualElement"
+          >
+            <template #description>
+              <div class="app-chat-page__selected-element-alert-desc">
+                {{ selectedElementSummary }}
+              </div>
+            </template>
+          </a-alert>
+
           <a-tooltip :title="!canChatOnApp ? chatBlockedReason : null">
             <div class="app-chat-page__textarea-wrap">
               <a-textarea
@@ -140,26 +174,73 @@
             <h2 class="preview-panel__title">网站预览</h2>
           </div>
           <a-space v-if="showPreview && previewUrl">
-            <a-button @click="openPreviewUrl">新窗口打开</a-button>
-            <a-button v-if="canEditAppInfo" type="link" @click="openEditPage"
-              >编辑应用信息</a-button
+            <a-button
+              class="preview-panel__edit-button"
+              :disabled="!canChatOnApp"
+              type="link"
+              :class="{ 'preview-panel__edit-button--active': isVisualEditing }"
+              @click="toggleVisualEditing"
             >
+              <template #icon>
+                <EditOutlined />
+              </template>
+              {{ isVisualEditing ? '退出编辑' : '可视化编辑' }}
+            </a-button>
+            <a-button class="preview-panel__link-button" type="link" @click="openPreviewUrl">
+              <template #icon>
+                <ExportOutlined />
+              </template>
+              新窗口打开
+            </a-button>
           </a-space>
         </div>
 
         <div class="preview-panel__body">
-          <AppPreviewFrame
-            :iframe-key="previewFrameKey"
-            :loading="previewLoading"
-            :preview-url="previewUrl"
-            :show-preview="showPreview"
-            empty-description="对话生成完成后，这里会展示对应的网站效果。"
-            iframe-title="应用预览"
-            loading-text="代码已经生成完成，正在加载右侧静态资源..."
+          <div v-if="previewLoading" class="preview-panel__loading">
+            <a-spin size="large" />
+            <p>代码已经生成完成，正在加载右侧静态资源...</p>
+          </div>
+          <iframe
+            v-else-if="showPreview && previewUrl"
+            ref="previewIframeRef"
+            :key="previewFrameKey"
+            :src="previewUrl"
+            class="preview-panel__iframe"
+            title="应用预览"
+            @load="onIframeLoad"
           />
+          <a-empty v-else description="对话生成完成后，这里会展示对应的网站效果。" />
         </div>
       </section>
     </main>
+
+    <a-modal
+      v-model:open="appDetailModalOpen"
+      :footer="null"
+      centered
+      title="应用详情"
+      width="480px"
+    >
+      <a-descriptions :column="1" class="app-chat-page__detail-descriptions" size="small">
+        <a-descriptions-item label="应用名称">{{ appName }}</a-descriptions-item>
+        <a-descriptions-item label="更新时间">{{ appUpdatedAt }}</a-descriptions-item>
+        <a-descriptions-item label="应用类型">
+          <a-tag color="blue" class="code-gen-type-tag">
+            {{ appTypeText }}
+          </a-tag>
+        </a-descriptions-item>
+      </a-descriptions>
+
+      <div class="app-chat-page__detail-actions">
+        <a-button type="primary" @click="openEditPageFromModal">
+          <template #icon>
+            <EditOutlined />
+          </template>
+          编辑
+        </a-button>
+        <a-button @click="appDetailModalOpen = false">关闭</a-button>
+      </div>
+    </a-modal>
 
     <a-modal
       v-model:open="deploySuccessModalOpen"
@@ -198,12 +279,20 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { CheckCircleFilled, CopyOutlined, LeftOutlined } from '@ant-design/icons-vue'
+import {
+  CheckCircleFilled,
+  CopyOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  ExportOutlined,
+  InfoCircleOutlined,
+  LeftOutlined,
+  RocketOutlined,
+} from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 
-import AppPreviewFrame from '@/components/app/AppPreviewFrame.vue'
 import MarkdownContent from '@/components/chat/MarkdownContent.vue'
 import { useRouteAppId } from '@/composables/useRouteAppId'
 import { deployApp, downloadAppCode, getAppVoById } from '@/api/appController'
@@ -212,6 +301,7 @@ import aiAssistantAvatar from '@/assets/img_1.png'
 import { useLoginUserStore } from '@/stores/loginUser'
 import { streamChatToGenCode } from '@/utils/chatStream'
 import {
+  formatDateTime,
   getAppDisplayName,
   resolveAppDeployUrl,
   resolveAppPreviewUrl,
@@ -219,6 +309,7 @@ import {
 } from '@/utils/app'
 import { openInNewTab } from '@/utils/browser'
 import { markHomeRefreshNeeded } from '@/utils/homeRefresh'
+import { type ElementInfo, VisualEditor } from '@/utils/visualEditor'
 import 'highlight.js/styles/github.css'
 import { getCodeGenTypeText } from '@/constants/codeGenType.ts'
 
@@ -245,11 +336,16 @@ const inputMessage = ref('')
 const isStreaming = ref(false)
 const deploying = ref(false)
 const downloading = ref(false)
+const appDetailModalOpen = ref(false)
 const deployUrl = ref('')
 const deploySuccessModalOpen = ref(false)
 const showPreview = ref(false)
 const previewLoading = ref(false)
+const previewReady = ref(false)
 const previewFrameKey = ref(0)
+const previewIframeRef = ref<HTMLIFrameElement>()
+const selectedElement = ref<ElementInfo | null>(null)
+const isVisualEditing = ref(false)
 const historyLoading = ref(false)
 const loadingMoreHistory = ref(false)
 const historyHasMore = ref(false)
@@ -258,8 +354,30 @@ const messageContainerRef = ref<HTMLElement>()
 const currentAbortController = ref<AbortController>()
 const scrollToBottomFrame = ref<number | null>(null)
 const scrollToBottomPending = ref(false)
+const visualEditor = new VisualEditor({
+  onElementSelected(elementInfo) {
+    selectedElement.value = elementInfo
+  },
+})
 
 const appName = computed(() => getAppDisplayName(appDetail))
+const appUpdatedAt = computed(() => formatDateTime(appDetail.updateTime))
+const appTypeText = computed(() => getCodeGenTypeText(appDetail.codeGenType))
+const selectedElementSummary = computed(() => {
+  if (!selectedElement.value) {
+    return ''
+  }
+
+  const { tagName, selector, textContent, id, className, pagePath } = selectedElement.value
+  return [
+    `标签：${tagName || '无'}`,
+    `选择器：${selector || '无'}`,
+    `文本：${textContent || '无'}`,
+    `ID：${id || '无'}`,
+    `类名：${className || '无'}`,
+    `页面路径：${pagePath || '当前页'}`,
+  ].join('\n')
+})
 const previewUrl = computed(() => resolveAppPreviewUrl(appDetail))
 const isOwnApp = computed(() => {
   if (!loginUserStore.loginUser.id || appDetail.userId === undefined || appDetail.userId === null) {
@@ -275,6 +393,25 @@ const canChatOnApp = computed(() => isOwnApp.value)
 const canDeployApp = computed(() => Boolean(appDetail.id) && isOwnApp.value)
 const hasDeployedApp = computed(() => Boolean(appDetail.deployKey?.trim()))
 const chatBlockedReason = '无法在别人的作品下对话哦~'
+
+const buildPromptContext = () => {
+  if (!selectedElement.value) {
+    return ''
+  }
+
+  const { tagName, selector, textContent, id, className, pagePath, rect } = selectedElement.value
+  return [
+    '[当前选中的页面元素]',
+    `- 标签：${tagName || '无'}`,
+    `- 选择器：${selector || '无'}`,
+    `- 文本：${textContent || '无'}`,
+    `- ID：${id || '无'}`,
+    `- 类名：${className || '无'}`,
+    `- 页面路径：${pagePath || '当前页'}`,
+    `- 位置尺寸：top=${Math.round(rect.top)}, left=${Math.round(rect.left)}, width=${Math.round(rect.width)}, height=${Math.round(rect.height)}`,
+    '请优先围绕这个元素及其直接相关区域进行修改。',
+  ].join('\n')
+}
 
 const getMessageKey = (item: ChatMessage) => {
   return item.id
@@ -411,6 +548,7 @@ const loadInitialHistory = async () => {
     }
 
     if (showPreview.value && previewUrl.value) {
+      previewReady.value = false
       previewFrameKey.value += 1
     }
   } catch (error) {
@@ -511,23 +649,31 @@ const loadPreviewAfterDone = async () => {
 
   if (!available) {
     showPreview.value = false
-    message.warning('代码生成已完成，但静态资源暂时不可访问，请稍后重试')
+    message.warning('已生成完成，但静态资源暂时不可访问，请稍后重试')
     return
   }
 
   showPreview.value = true
+  previewReady.value = false
   previewFrameKey.value += 1
 }
 
-const runChat = async (content: string) => {
-  if (!appId.value || !content.trim() || isStreaming.value || !canChatOnApp.value) {
+const runChat = async (displayContent: string, requestContent = displayContent) => {
+  const normalizedDisplayContent = displayContent.trim()
+  const normalizedRequestContent = requestContent.trim()
+
+  if (!appId.value || !normalizedDisplayContent || !normalizedRequestContent || isStreaming.value || !canChatOnApp.value) {
     return
   }
 
+  visualEditor.disableEditMode()
+  visualEditor.clearSelection()
+  isVisualEditing.value = false
+  selectedElement.value = null
   appendMessage({
     id: `user-${Date.now()}`,
     role: 'user',
-    content: content.trim(),
+    content: normalizedDisplayContent,
     status: 'done',
   })
 
@@ -541,6 +687,7 @@ const runChat = async (content: string) => {
 
   isStreaming.value = true
   showPreview.value = false
+  previewReady.value = false
   previewLoading.value = false
   previewFrameKey.value += 1
 
@@ -552,7 +699,7 @@ const runChat = async (content: string) => {
   try {
     await streamChatToGenCode(
       appId.value,
-      content.trim(),
+      normalizedRequestContent,
       {
         onChunk(chunk) {
           assistantContent += chunk
@@ -603,8 +750,13 @@ const sendCurrentMessage = async () => {
     return
   }
 
+  const selectedPromptContext = buildPromptContext()
+  const requestContent = selectedPromptContext
+    ? `${content}\n\n${selectedPromptContext}`
+    : content
+
   inputMessage.value = ''
-  await runChat(content)
+  await runChat(content, requestContent)
 }
 
 const handleTextareaEnter = (event: KeyboardEvent) => {
@@ -706,6 +858,37 @@ const openPreviewUrl = () => {
   openInNewTab(previewUrl.value)
 }
 
+const onIframeLoad = () => {
+  const iframe = previewIframeRef.value
+  if (!iframe) {
+    return
+  }
+
+  previewReady.value = true
+  visualEditor.init(iframe)
+  visualEditor.onIframeLoad()
+}
+
+const toggleVisualEditing = () => {
+  const iframe = previewIframeRef.value
+  if (!iframe || !previewReady.value) {
+    message.warning('请等待页面加载完成')
+    return
+  }
+
+  visualEditor.init(iframe)
+  isVisualEditing.value = visualEditor.toggleEditMode()
+}
+
+const clearSelectedVisualElement = () => {
+  selectedElement.value = null
+  visualEditor.clearSelection()
+}
+
+const openAppDetailModal = () => {
+  appDetailModalOpen.value = true
+}
+
 const openDeployUrl = () => {
   openInNewTab(deployUrl.value)
 }
@@ -728,6 +911,11 @@ const openEditPage = async () => {
     return
   }
   await router.push(`/app/edit/${appDetail.id}`)
+}
+
+const openEditPageFromModal = async () => {
+  appDetailModalOpen.value = false
+  await openEditPage()
 }
 
 const goHome = async () => {
@@ -771,6 +959,8 @@ const handleInitialPrompt = async () => {
 }
 
 onMounted(async () => {
+  window.addEventListener('message', visualEditor.handleIframeMessage)
+
   const loaded = await loadAppDetail()
   if (!loaded) {
     return
@@ -782,6 +972,9 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('message', visualEditor.handleIframeMessage)
+  visualEditor.destroy()
+
   if (scrollToBottomFrame.value !== null) {
     window.cancelAnimationFrame(scrollToBottomFrame.value)
   }
@@ -945,6 +1138,16 @@ onBeforeUnmount(() => {
   margin-bottom: 14px;
 }
 
+.app-chat-page__selected-element-alert {
+  margin-bottom: 14px;
+}
+
+.app-chat-page__selected-element-alert-desc {
+  color: var(--app-text);
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
 .app-chat-page__textarea-wrap {
   width: 100%;
 }
@@ -983,6 +1186,100 @@ onBeforeUnmount(() => {
   min-height: 0;
   padding: 0 20px 20px;
   overflow: hidden;
+}
+
+.preview-panel__loading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 320px;
+  color: var(--app-text-secondary);
+}
+
+.preview-panel__iframe {
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: #ffffff;
+  border: 1px solid rgba(220, 230, 255, 0.9);
+  border-radius: 22px;
+}
+
+.preview-panel__body :deep(.ant-empty) {
+  margin: auto;
+}
+
+.preview-panel__link-button {
+  padding-left: 0;
+}
+
+.preview-panel__edit-button,
+.preview-panel__link-button {
+  padding: 0;
+  color: #1677ff;
+}
+
+.preview-panel__edit-button:hover,
+.preview-panel__edit-button:focus,
+.preview-panel__link-button:hover,
+.preview-panel__link-button:focus {
+  color: #4096ff;
+}
+
+.preview-panel__edit-button--active,
+.preview-panel__edit-button--active:hover,
+.preview-panel__edit-button--active:focus {
+  color: #ff4d4f;
+}
+
+.app-chat-page__download-btn {
+  color: #1677ff;
+  border-color: #1677ff;
+  background: #ffffff;
+}
+
+.app-chat-page__download-btn:hover,
+.app-chat-page__download-btn:focus {
+  color: #4096ff;
+  border-color: #4096ff;
+  background: #ffffff;
+}
+
+.app-chat-page__detail-descriptions :deep(.ant-descriptions-view) {
+  background: transparent;
+  border: 0;
+}
+
+.app-chat-page__detail-descriptions :deep(.ant-descriptions-row > th),
+.app-chat-page__detail-descriptions :deep(.ant-descriptions-row > td) {
+  padding-right: 0;
+  padding-left: 0;
+  border-bottom: 0;
+}
+
+.app-chat-page__detail-descriptions :deep(.ant-descriptions-item-label) {
+  width: 88px;
+  color: var(--app-text-secondary);
+}
+
+.app-chat-page__detail-descriptions :deep(.ant-descriptions-item-content) {
+  color: var(--app-text);
+}
+
+.app-chat-page__detail-actions {
+  display: flex;
+  width: 100%;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.app-chat-page__detail-actions :deep(.ant-btn) {
+  flex: 1;
 }
 
 .deploy-success-modal {
