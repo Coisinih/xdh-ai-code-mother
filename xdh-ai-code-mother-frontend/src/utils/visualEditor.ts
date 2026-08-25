@@ -339,24 +339,13 @@ export class VisualEditor {
           listenersReady = true;
         };
 
-        const showTip = () => {
-          if (!document.body || document.getElementById(TIP_ID)) return;
-          const tip = document.createElement('div');
-          tip.id = TIP_ID;
-          tip.textContent = 'Edit mode enabled';
-          tip.style.cssText = 'position:fixed;top:16px;right:16px;z-index:2147483647;padding:8px 12px;color:#fff;background:#1677ff;border-radius:6px;font:13px/1.4 sans-serif;pointer-events:none;';
-          document.body.appendChild(tip);
-          window.setTimeout(() => tip.remove(), 2200);
-        };
-
         window.addEventListener('message', (event) => {
           if (event.source !== window.parent) return;
           const message = event.data || {};
           if (message.type === 'TOGGLE_EDIT_MODE') {
             editMode = Boolean(message.editMode);
             setup();
-            if (editMode) showTip();
-            else {
+            if (!editMode) {
               clearHover();
               clearSelected();
               document.getElementById(TIP_ID)?.remove();

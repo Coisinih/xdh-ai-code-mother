@@ -150,21 +150,20 @@
                 placeholder="描述越详细，页面越具体。例如：请把首页改成深色科技风，并补充产品优势区块。"
                 @press-enter="handleTextareaEnter"
               />
+              <a-button
+                aria-label="发送消息"
+                class="app-chat-page__send-button"
+                :disabled="!canChatOnApp || !appDetail.id"
+                :loading="isStreaming"
+                type="primary"
+                @click="sendCurrentMessage"
+              >
+                <template #icon>
+                  <SendOutlined />
+                </template>
+              </a-button>
             </div>
           </a-tooltip>
-
-          <div class="app-chat-page__composer-footer">
-            <span class="app-chat-page__composer-hint">支持连续对话优化同一个应用</span>
-            <a-button
-              :disabled="!canChatOnApp || !appDetail.id"
-              :loading="isStreaming"
-              size="large"
-              type="primary"
-              @click="sendCurrentMessage"
-            >
-              发送
-            </a-button>
-          </div>
         </div>
       </section>
 
@@ -196,9 +195,22 @@
         </div>
 
         <div class="preview-panel__body">
-          <div v-if="previewLoading" class="preview-panel__loading">
+          <div v-if="isStreaming || previewLoading" class="preview-panel__loading">
             <a-spin size="large" />
-            <p>代码已经生成完成，正在加载右侧静态资源...</p>
+            <p>
+              {{
+                isStreaming ? '正在生成代码，请稍候...' : '代码已经生成完成，正在加载静态资源...'
+              }}
+            </p>
+          </div>
+          <div v-else-if="previewLoadFailed" class="preview-panel__load-error">
+            <p>静态资源加载失败，请刷新重试或重新生成</p>
+            <a-button type="link" @click="retryPreview">
+              <template #icon>
+                <ReloadOutlined />
+              </template>
+              刷新资源
+            </a-button>
           </div>
           <iframe
             v-else-if="showPreview && previewUrl"
@@ -208,6 +220,7 @@
             class="preview-panel__iframe"
             title="应用预览"
             @load="onIframeLoad"
+            @error="onIframeError"
           />
           <a-empty v-else description="对话生成完成后，这里会展示对应的网站效果。" />
         </div>
@@ -287,7 +300,9 @@ import {
   ExportOutlined,
   InfoCircleOutlined,
   LeftOutlined,
+  ReloadOutlined,
   RocketOutlined,
+  SendOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -341,6 +356,7 @@ const deployUrl = ref('')
 const deploySuccessModalOpen = ref(false)
 const showPreview = ref(false)
 const previewLoading = ref(false)
+const previewLoadFailed = ref(false)
 const previewReady = ref(false)
 const previewFrameKey = ref(0)
 const previewIframeRef = ref<HTMLIFrameElement>()
@@ -543,13 +559,23 @@ const loadInitialHistory = async () => {
     historyHasMore.value =
       page.records.length === HISTORY_PAGE_SIZE && historyTotal.value > page.records.length
 
-    if (String(route.query.view) === '1' || historyTotal.value >= 2) {
-      showPreview.value = true
-    }
+    const shouldShowPreview = String(route.query.view) === '1' || historyTotal.value >= 2
+    showPreview.value = false
+    previewLoadFailed.value = false
 
-    if (showPreview.value && previewUrl.value) {
-      previewReady.value = false
-      previewFrameKey.value += 1
+    if (shouldShowPreview && previewUrl.value) {
+      previewLoading.value = true
+      const available = await probeStaticPreview(previewUrl.value)
+      previewLoading.value = false
+
+      if (available) {
+        previewReady.value = false
+        showPreview.value = true
+        previewFrameKey.value += 1
+      } else {
+        previewLoadFailed.value = true
+        message.warning('静态资源加载失败，请刷新重试或重新生成')
+      }
     }
   } catch (error) {
     message.error(error instanceof Error ? error.message : '获取对话历史失败')
@@ -617,14 +643,18 @@ const probeStaticPreview = async (url: string) => {
   const maxAttempts = 8
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const response = await fetch(url, {
-      method: 'GET',
-      credentials: 'include',
-      cache: 'no-store',
-    })
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+      })
 
-    if (response.ok) {
-      return true
+      if (response.ok) {
+        return true
+      }
+    } catch {
+      // Retry transient network failures before showing the refresh action.
     }
 
     await new Promise((resolve) => {
@@ -640,7 +670,8 @@ const loadPreviewAfterDone = async () => {
   const url = previewUrl.value
   if (!url) {
     previewLoading.value = false
-    message.warning('已收到 done 事件，但未找到静态资源地址')
+    previewLoadFailed.value = true
+    message.warning('未找到静态资源地址')
     return
   }
 
@@ -649,20 +680,67 @@ const loadPreviewAfterDone = async () => {
 
   if (!available) {
     showPreview.value = false
+    previewLoadFailed.value = true
     message.warning('已生成完成，但静态资源暂时不可访问，请稍后重试')
     return
   }
 
+  previewLoadFailed.value = false
   showPreview.value = true
   previewReady.value = false
   previewFrameKey.value += 1
+}
+
+const retryPreview = async () => {
+  if (previewLoading.value) {
+    return
+  }
+
+  previewLoading.value = true
+  previewLoadFailed.value = false
+  showPreview.value = false
+  previewReady.value = false
+
+  try {
+    const loaded = await loadAppDetail()
+    const url = loaded ? previewUrl.value : ''
+    const available = url ? await probeStaticPreview(url) : false
+
+    if (!available) {
+      previewLoadFailed.value = true
+      message.warning('静态资源仍不可用，请稍后再试')
+      return
+    }
+
+    showPreview.value = true
+    previewFrameKey.value += 1
+  } catch (error) {
+    previewLoadFailed.value = true
+    message.warning(error instanceof Error ? error.message : '静态资源获取失败，请刷新重试')
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+const onIframeError = () => {
+  previewLoading.value = false
+  previewReady.value = false
+  showPreview.value = false
+  previewLoadFailed.value = true
+  message.warning('静态资源加载失败，请刷新重试或重新生成')
 }
 
 const runChat = async (displayContent: string, requestContent = displayContent) => {
   const normalizedDisplayContent = displayContent.trim()
   const normalizedRequestContent = requestContent.trim()
 
-  if (!appId.value || !normalizedDisplayContent || !normalizedRequestContent || isStreaming.value || !canChatOnApp.value) {
+  if (
+    !appId.value ||
+    !normalizedDisplayContent ||
+    !normalizedRequestContent ||
+    isStreaming.value ||
+    !canChatOnApp.value
+  ) {
     return
   }
 
@@ -689,6 +767,7 @@ const runChat = async (displayContent: string, requestContent = displayContent) 
   showPreview.value = false
   previewReady.value = false
   previewLoading.value = false
+  previewLoadFailed.value = false
   previewFrameKey.value += 1
 
   const abortController = new AbortController()
@@ -751,9 +830,7 @@ const sendCurrentMessage = async () => {
   }
 
   const selectedPromptContext = buildPromptContext()
-  const requestContent = selectedPromptContext
-    ? `${content}\n\n${selectedPromptContext}`
-    : content
+  const requestContent = selectedPromptContext ? `${content}\n\n${selectedPromptContext}` : content
 
   inputMessage.value = ''
   await runChat(content, requestContent)
@@ -864,6 +941,7 @@ const onIframeLoad = () => {
     return
   }
 
+  previewLoadFailed.value = false
   previewReady.value = true
   visualEditor.init(iframe)
   visualEditor.onIframeLoad()
@@ -1149,20 +1227,26 @@ onBeforeUnmount(() => {
 }
 
 .app-chat-page__textarea-wrap {
+  position: relative;
   width: 100%;
 }
 
-.app-chat-page__composer-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 14px;
+.app-chat-page__textarea-wrap :deep(.ant-input) {
+  padding-right: 52px;
+  padding-bottom: 48px;
 }
 
-.app-chat-page__composer-hint {
-  color: var(--app-text-secondary);
-  font-size: 0.92rem;
+.app-chat-page__send-button {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
 }
 
 .preview-panel__header {
@@ -1197,6 +1281,21 @@ onBeforeUnmount(() => {
   gap: 16px;
   min-height: 320px;
   color: var(--app-text-secondary);
+}
+
+.preview-panel__load-error {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 320px;
+  color: var(--app-text-secondary);
+}
+
+.preview-panel__load-error p {
+  margin: 0;
 }
 
 .preview-panel__iframe {
@@ -1355,8 +1454,7 @@ onBeforeUnmount(() => {
   .app-chat-page__header,
   .app-chat-page__header-left,
   .app-chat-page__header-right,
-  .preview-panel__header,
-  .app-chat-page__composer-footer {
+  .preview-panel__header {
     flex-direction: column;
     align-items: stretch;
   }
