@@ -1,10 +1,12 @@
 package com.xdh.xdhaicodemother.ai.tools;
 
+import cn.hutool.json.JSONObject;
 import com.xdh.xdhaicodemother.constant.AppConstant;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,7 +21,8 @@ import java.nio.file.Paths;
  * @since 2026-08-25
  */
 @Slf4j
-public class FileReadTool {
+@Component
+public class FileReadTool extends BaseTool {
 
     @Tool("读取指定路径的文件内容")
     public String readFile(@P("文件的相对路径") String relativeFilePath, @ToolMemoryId Long appId) {
@@ -40,5 +43,21 @@ public class FileReadTool {
             log.error(errorMessage, e);
             return errorMessage;
         }
+    }
+
+    @Override
+    public String getToolName() {
+        return "readFile";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "读取文件";
+    }
+
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        return String.format("[工具调用] %s %s", getDisplayName(), relativeFilePath);
     }
 }

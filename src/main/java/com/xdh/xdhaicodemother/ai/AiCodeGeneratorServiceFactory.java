@@ -2,7 +2,7 @@ package com.xdh.xdhaicodemother.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.xdh.xdhaicodemother.ai.tools.*;
+import com.xdh.xdhaicodemother.ai.tools.ToolManager;
 import com.xdh.xdhaicodemother.exception.BusinessException;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
@@ -47,6 +47,9 @@ public class AiCodeGeneratorServiceFactory {
 
     @Resource
     private ChatHistoryService chatHistoryService;
+
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * AI 服务实例缓存
@@ -104,11 +107,7 @@ public class AiCodeGeneratorServiceFactory {
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(new FileWriteTool(),
-                            new FileDeleteTool(),
-                            new FileDirReadTool(),
-                            new FileModifyTool(),
-                            new FileReadTool())
+                    .tools(toolManager.getAllTools())
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                             toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                     ))
