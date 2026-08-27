@@ -20,7 +20,7 @@ public class MultiFileSaverTemplate extends CodeFileSaverTemplate<MultiFileCodeR
         if (CharSequenceUtil.isNotBlank(multiFileCodeResult.getCssCode())) {
             writeToFile(dirPath, "style.css", multiFileCodeResult.getCssCode());
         }
-        if (CharSequenceUtil.isNotBlank(multiFileCodeResult.getCssCode())) {
+        if (CharSequenceUtil.isNotBlank(multiFileCodeResult.getJsCode())) {
             writeToFile(dirPath, "script.js", multiFileCodeResult.getJsCode());
         }
     }
