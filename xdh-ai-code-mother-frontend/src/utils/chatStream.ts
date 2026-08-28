@@ -4,6 +4,7 @@ import { type AppIdentifier } from '@/utils/app'
 type StreamHandlers = {
   onChunk: (chunk: string) => void
   onDone?: () => void
+  onBusinessError?: (data: string) => void
 }
 
 type ParsedSsePayload = {
@@ -83,6 +84,11 @@ export const streamChatToGenCode = async (
     for (const block of blocks) {
       const payload = parseSseBlock(block)
 
+      if (payload.event === 'business-error') {
+        handlers.onBusinessError?.(payload.data)
+        return
+      }
+
       if (payload.event === 'done') {
         handlers.onDone?.()
         continue
@@ -98,6 +104,10 @@ export const streamChatToGenCode = async (
     if (done) {
       if (buffer.trim()) {
         const finalPayload = parseSseBlock(buffer)
+        if (finalPayload.event === 'business-error') {
+          handlers.onBusinessError?.(finalPayload.data)
+          return
+        }
         if (finalPayload.event === 'done') {
           handlers.onDone?.()
         } else if (finalPayload.data && finalPayload.data !== '[DONE]') {

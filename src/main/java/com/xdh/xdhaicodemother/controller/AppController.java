@@ -19,6 +19,8 @@ import com.xdh.xdhaicodemother.model.entity.User;
 import com.xdh.xdhaicodemother.model.enums.AppConstantEnum;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
 import com.xdh.xdhaicodemother.model.vo.AppVO;
+import com.xdh.xdhaicodemother.ratelimite.annotation.RateLimit;
+import com.xdh.xdhaicodemother.ratelimite.enums.RateLimitType;
 import com.xdh.xdhaicodemother.service.AppService;
 import com.xdh.xdhaicodemother.service.ProjectDownloadService;
 import com.xdh.xdhaicodemother.service.UserService;
@@ -65,6 +67,7 @@ public class AppController {
      * @return 生成结果流
      */
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60, message = "AI 对话请求过于频繁，请稍后再试")
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam Long appId, @RequestParam String message, HttpServletRequest request) {
         // 参数校验
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");

@@ -774,6 +774,7 @@ const runChat = async (displayContent: string, requestContent = displayContent) 
   currentAbortController.value = abortController
   let assistantContent = ''
   let receivedDone = false
+  let receivedBusinessError = false
 
   try {
     await streamChatToGenCode(
@@ -781,17 +782,51 @@ const runChat = async (displayContent: string, requestContent = displayContent) 
       normalizedRequestContent,
       {
         onChunk(chunk) {
+          if (receivedBusinessError) {
+            return
+          }
+
           assistantContent += chunk
           replaceAssistantContent(assistantMessageId, assistantContent, 'streaming')
           void scrollMessagesToBottom()
         },
         onDone() {
+          if (receivedBusinessError) {
+            return
+          }
+
           receivedDone = true
           previewLoading.value = true
+        },
+        onBusinessError(data) {
+          if (receivedDone || receivedBusinessError) {
+            return
+          }
+
+          receivedBusinessError = true
+          previewLoading.value = false
+
+          let errorMessage = '生成过程中出现错误'
+
+          try {
+            const errorData = JSON.parse(data) as { message?: string }
+            if (typeof errorData.message === 'string' && errorData.message.trim()) {
+              errorMessage = errorData.message.trim()
+            }
+          } catch (parseError) {
+            console.error('解析业务错误事件失败:', parseError, '原始数据:', data)
+          }
+
+          replaceAssistantContent(assistantMessageId, `❌ ${errorMessage}`, 'error')
+          message.error(errorMessage)
         },
       },
       abortController.signal,
     )
+
+    if (receivedBusinessError) {
+      return
+    }
 
     replaceAssistantContent(assistantMessageId, assistantContent || '生成完成。', 'done')
 
