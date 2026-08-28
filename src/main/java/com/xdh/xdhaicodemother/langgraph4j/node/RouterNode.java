@@ -1,6 +1,7 @@
 package com.xdh.xdhaicodemother.langgraph4j.node;
 
 import com.xdh.xdhaicodemother.ai.AiCodeGenTypeRoutingService;
+import com.xdh.xdhaicodemother.ai.AiCodeTypeRoutingFactory;
 import com.xdh.xdhaicodemother.langgraph4j.state.WorkflowContext;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
 import com.xdh.xdhaicodemother.utils.SpringContextUtil;
@@ -28,7 +29,8 @@ public class RouterNode {
             CodeGenTypeEnum generationType;
             try {
                 // 获取AI路由服务
-                AiCodeGenTypeRoutingService routingService = SpringContextUtil.getBean(AiCodeGenTypeRoutingService.class);
+                AiCodeTypeRoutingFactory factory = SpringContextUtil.getBean(AiCodeTypeRoutingFactory.class);
+                AiCodeGenTypeRoutingService routingService = factory.createAiCodeTypeRoutingService();
                 // 根据原始提示词进行智能路由
                 generationType = routingService.routeCodeGenType(context.getOriginalPrompt());
                 log.info("AI智能路由完成，选择类型: {} ({})", generationType.getValue(), generationType.getText());

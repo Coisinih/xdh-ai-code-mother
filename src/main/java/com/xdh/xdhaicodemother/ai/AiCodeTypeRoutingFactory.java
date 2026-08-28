@@ -1,8 +1,8 @@
 package com.xdh.xdhaicodemother.ai;
 
+import com.xdh.xdhaicodemother.utils.SpringContextUtil;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
-import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,14 +14,18 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class AiCodeTypeRoutingFactory {
-    @Resource
-    private ChatModel chatModel;
 
-    @Bean
-    public AiCodeGenTypeRoutingService aiCodeTypeRoutingService() {
+    public AiCodeGenTypeRoutingService createAiCodeTypeRoutingService() {
+        // 动态获取 路由模型 ，支持并发
+        ChatModel chatModel = SpringContextUtil.getBean("routingChatModelPrototype", ChatModel.class);
         return AiServices.builder(AiCodeGenTypeRoutingService.class)
                 .chatModel(chatModel)
                 .build();
+    }
+
+    @Bean
+    public AiCodeGenTypeRoutingService aiCodeTypeRoutingService() {
+        return createAiCodeTypeRoutingService();
     }
 
 }

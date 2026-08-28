@@ -9,6 +9,7 @@ import cn.hutool.core.util.RandomUtil;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xdh.xdhaicodemother.ai.AiCodeGenTypeRoutingService;
+import com.xdh.xdhaicodemother.ai.AiCodeTypeRoutingFactory;
 import com.xdh.xdhaicodemother.constant.AppConstant;
 import com.xdh.xdhaicodemother.core.AiCodeGeneratorFacade;
 import com.xdh.xdhaicodemother.core.builder.VueProjectBuilder;
@@ -69,7 +70,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private VueProjectBuilder vueProjectBuilder;
 
     @Resource
-    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+    private AiCodeTypeRoutingFactory aiCodeTypeRoutingFactory;
 
 
     /**
@@ -117,7 +118,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         app.setUserId(loginUser.getId());
         // 应用名称暂时为 initPrompt 的前 12 位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // AI 智能路由
+        // AI 智能路由(多例模式)
+        AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService = aiCodeTypeRoutingFactory.createAiCodeTypeRoutingService();
         CodeGenTypeEnum codeType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
         app.setCodeGenType(codeType.getValue());
 
