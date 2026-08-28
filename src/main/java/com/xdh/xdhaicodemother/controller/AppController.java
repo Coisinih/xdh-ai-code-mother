@@ -25,6 +25,7 @@ import com.xdh.xdhaicodemother.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -246,6 +247,11 @@ public class AppController {
      * @return 精选应用列表
      */
     @PostMapping("/good/list/page/vo")
+    @Cacheable(
+            value = "good_app_page",    // 缓存的空间名称（ key 前缀的名称）
+            key = "T(com.xdh.xdhaicodemother.utils.CacheKeyUtils).generateKey(#appQueryRequest)",   // 定义如何生成缓存 key
+            condition = "#appQueryRequest.pageNum <= 10"    // 设置缓存条件，只有前十页才会被缓存
+    )
     public BaseResponse<Page<AppVO>> listGoodAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
         // 限制每页最多 20 个
