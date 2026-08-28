@@ -2,6 +2,8 @@ package com.xdh.xdhaicodemother.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.xdh.xdhaicodemother.ai.guardrail.PromptSafetyInputGuardrail;
+import com.xdh.xdhaicodemother.ai.guardrail.RetryOutputGuardrail;
 import com.xdh.xdhaicodemother.ai.tools.ToolManager;
 import com.xdh.xdhaicodemother.exception.BusinessException;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
@@ -99,6 +101,8 @@ public class AiCodeGeneratorServiceFactory {
                         .streamingChatModel(openAiStreamingChatModel)
                         .chatModel(chatModel)
                         .chatMemory(chatMemory)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入护轨
+//                        .outputGuardrails(new RetryOutputGuardrail())  // 会影响流式输出的效果
                         .build();
             }
             // Vue 项目生成使用推理模型
@@ -112,6 +116,8 @@ public class AiCodeGeneratorServiceFactory {
                         .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                                 toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                         ))
+                        .inputGuardrails(new PromptSafetyInputGuardrail())  // 添加输入护轨
+//                        .outputGuardrails(new RetryOutputGuardrail())  // 会影响流式输出的效果
                         .build();
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
