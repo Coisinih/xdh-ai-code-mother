@@ -9,6 +9,8 @@ import com.xdh.xdhaicodemother.ai.model.MultiFileCodeResult;
 import com.xdh.xdhaicodemother.ai.model.message.AiResponseMessage;
 import com.xdh.xdhaicodemother.ai.model.message.ToolExecutedMessage;
 import com.xdh.xdhaicodemother.ai.model.message.ToolRequestMessage;
+import com.xdh.xdhaicodemother.constant.AppConstant;
+import com.xdh.xdhaicodemother.core.builder.VueProjectBuilder;
 import com.xdh.xdhaicodemother.core.parser.CodeParserExcutor;
 import com.xdh.xdhaicodemother.core.saver.CodeSaverExcutor;
 import com.xdh.xdhaicodemother.exception.BusinessException;
@@ -37,7 +39,8 @@ import java.io.File;
 public class AiCodeGeneratorFacade {
     @Resource
     AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
-
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
 
     /**
      * 统一 AI 生成代码入口，根据类型生成并保存代码文件
@@ -86,7 +89,7 @@ public class AiCodeGeneratorFacade {
             }
             case VUE_PROJECT -> {
                 TokenStream codeStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
-                yield processTokenStream(codeStream);
+                yield processTokenStream(codeStream, appId);
             }
             default ->
                     throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持的生成类型：" + codeGenType.getValue());
@@ -123,7 +126,7 @@ public class AiCodeGeneratorFacade {
      * @param tokenStream TokenStream 对象
      * @return Flux<String> 流式响应
      */
-    private Flux<String> processTokenStream(TokenStream tokenStream) {
+    private Flux<String> processTokenStream(TokenStream tokenStream, Long appId) {
         return Flux.create((sink ->
                 tokenStream.onPartialResponse((String partialResponse) -> {
                             AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
@@ -137,7 +140,12 @@ public class AiCodeGeneratorFacade {
                             ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
                             sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
                         })
-                        .onCompleteResponse((ChatResponse response) -> sink.complete())
+                        .onCompleteResponse((ChatResponse response) -> {
+                            // 同步构建 vue 项目
+                            String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + "vue_project_" + appId;
+                            vueProjectBuilder.buildProject(projectPath);
+                            sink.complete();
+                        })
                         .onError((Throwable error) -> {
                             log.error("将 TokenStream 转换为 Flux<String>失败:{}", ExceptionUtil.stacktraceToString(error));
                             sink.error(error);

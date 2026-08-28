@@ -6,8 +6,6 @@ import cn.hutool.json.JSONUtil;
 import com.xdh.xdhaicodemother.ai.model.message.*;
 import com.xdh.xdhaicodemother.ai.tools.BaseTool;
 import com.xdh.xdhaicodemother.ai.tools.ToolManager;
-import com.xdh.xdhaicodemother.constant.AppConstant;
-import com.xdh.xdhaicodemother.core.builder.VueProjectBuilder;
 import com.xdh.xdhaicodemother.model.entity.User;
 import com.xdh.xdhaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.xdh.xdhaicodemother.service.ChatHistoryService;
@@ -16,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
-import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -30,9 +27,6 @@ import java.util.Set;
 @Slf4j
 @Component
 public class JsonMessageStreamHandler {
-
-    @Resource
-    private VueProjectBuilder vueProjectBuilder;
 
     @Resource
     private ToolManager toolManager;
@@ -60,9 +54,6 @@ public class JsonMessageStreamHandler {
                     // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.addChatMessage(aiResponse, loginUser.getId(), appId, ChatHistoryMessageTypeEnum.AI.getValue());
-                    // 异步构建 vue 项目
-                    String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + "vue_project_" + appId;
-                    vueProjectBuilder.buildProjectAsync(projectPath);
                 }).doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息
                     String errorMessage = "AI回复失败: " + error.getMessage();
