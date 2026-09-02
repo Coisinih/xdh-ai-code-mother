@@ -1,5 +1,6 @@
 package com.xdh.xdhaicodemother.config;
 
+import cn.hutool.core.util.StrUtil;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -23,11 +24,15 @@ public class RedisChatMemoryStoreConfig {
 
     @Bean
     public RedisChatMemoryStore redisChatMemoryStore() {
-        return RedisChatMemoryStore.builder()
-                .ttl(ttl)
+        RedisChatMemoryStore.Builder builder = RedisChatMemoryStore.builder()
                 .host(host)
                 .port(port)
                 .password(password)
-                .build();
+                .ttl(ttl);
+        if (StrUtil.isNotBlank(password)) {
+            builder.user("xdh-ai-code-mother-user");
+        }
+        return builder.build();
     }
+
 }
