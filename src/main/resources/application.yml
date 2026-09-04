@@ -54,3 +54,12 @@ logging:
   level:
     com.xdh.xdhaicodemother.mapper: info
     com.mybatisflex: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

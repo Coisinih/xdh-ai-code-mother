@@ -26,6 +26,8 @@ import com.xdh.xdhaicodemother.model.enums.ChatHistoryMessageTypeEnum;
 import com.xdh.xdhaicodemother.model.enums.CodeGenTypeEnum;
 import com.xdh.xdhaicodemother.model.vo.AppVO;
 import com.xdh.xdhaicodemother.model.vo.UserVO;
+import com.xdh.xdhaicodemother.monitor.MonitorContext;
+import com.xdh.xdhaicodemother.monitor.MonitorContextHolder;
 import com.xdh.xdhaicodemother.service.AppService;
 import com.xdh.xdhaicodemother.service.ChatHistoryService;
 import com.xdh.xdhaicodemother.service.ScreenshotService;
@@ -105,10 +107,22 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 4.1 保存用户消息
         chatHistoryService.addChatMessage(userMessage, loginUser.getId(), appId, ChatHistoryMessageTypeEnum.USER.getValue());
 
-        // 5. 调用 AI 生成应用代码
+        // 5. 设置监控上下文
+        MonitorContextHolder.setContext(
+                MonitorContext.builder()
+                        .userId(loginUser.getId().toString())
+                        .appId(appId.toString())
+                        .build()
+        );
+
+        // 6. 调用 AI 生成应用代码
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(codeGenType, userMessage, appId);
-        // 5.1 收集 AI 响应内容，并在完成后记录到对话历史
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenType);
+        // 6.1 收集 AI 响应内容，并在完成后记录到对话历史
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenType)
+                .doFinally(signalType ->
+                        // 流结束时清理上下文，避免浪费系统资源（无论成功/失败/取消）
+                        MonitorContextHolder.clearContext()
+                );
     }
 
     @Override

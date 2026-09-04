@@ -888,8 +888,10 @@ const handleDeploy = async () => {
   try {
     const res = await deployApp({ appId: toApiRequestId(appDetail.id) })
     if (res.data.code === 0 && res.data.data) {
-      deployUrl.value = res.data.data
+      const latestDeployUrl = res.data.data
+      deployUrl.value = latestDeployUrl
       await loadAppDetail()
+      deployUrl.value = latestDeployUrl
       markHomeRefreshNeeded()
       deploySuccessModalOpen.value = true
       return

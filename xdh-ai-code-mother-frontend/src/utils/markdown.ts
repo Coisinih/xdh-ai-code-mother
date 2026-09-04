@@ -4,6 +4,8 @@ import javascript from 'highlight.js/lib/languages/javascript'
 import xml from 'highlight.js/lib/languages/xml'
 import MarkdownIt from 'markdown-it'
 
+import { unwrapChatPayload } from '@/utils/chatPayload'
+
 hljs.registerLanguage('xml', xml)
 hljs.registerLanguage('html', xml)
 hljs.registerLanguage('vue', xml)
@@ -53,60 +55,83 @@ const markdown = new MarkdownIt({
   },
 })
 
-const normalizeCodeBlocks = (content: string) => {
-  const fence = '```'
-  let cursor = 0
-  let output = ''
+type FenceMatch = {
+  marker: string
+  suffix: string
+}
 
-  while (cursor < content.length) {
-    const start = content.indexOf(fence, cursor)
-    if (start < 0) {
-      output += content.slice(cursor)
-      break
-    }
+const parseFenceLine = (line: string): FenceMatch | null => {
+  const match = line.match(/^\s{0,3}(`{3,})([^`]*)$/)
 
-    output += content.slice(cursor, start)
-
-    const openingLineEnd = content.indexOf('\n', start + fence.length)
-    if (openingLineEnd < 0) {
-      output += content.slice(start)
-      break
-    }
-
-    const language = content
-      .slice(start + fence.length, openingLineEnd)
-      .trim()
-      .replace(/\r$/, '')
-    const codeStart = openingLineEnd + 1
-    const end = content.indexOf(fence, codeStart)
-
-    if (end < 0) {
-      // Keep an incomplete block intact while the stream is still arriving.
-      output += content.slice(start)
-      break
-    }
-
-    const code = content.slice(codeStart, end)
-    output += `${fence}${language}\n${code}${fence}`
-    cursor = end + fence.length
+  if (!match) {
+    return null
   }
 
-  return output
+  const marker = match[1]
+  const suffix = match[2]
+
+  if (!marker || suffix === undefined) {
+    return null
+  }
+
+  return {
+    marker,
+    suffix: suffix.trim(),
+  }
+}
+
+const normalizeCodeBlocks = (content: string) => {
+  const normalizedContent = content.replaceAll('\r\n', '\n')
+  const lines = normalizedContent.split('\n')
+  const normalizedLines: string[] = []
+  let openFence: string | null = null
+
+  for (const line of lines) {
+    const fence = parseFenceLine(line)
+
+    if (!openFence) {
+      normalizedLines.push(line)
+
+      if (fence) {
+        openFence = fence.marker
+      }
+
+      continue
+    }
+
+    if (fence && !fence.suffix && fence.marker.length >= openFence.length) {
+      normalizedLines.push(line)
+      openFence = null
+      continue
+    }
+
+    const startsNextToolCall = line.trimStart().startsWith('[工具调用]')
+    const startsNextFence = Boolean(fence && fence.suffix)
+
+    if (startsNextToolCall || startsNextFence) {
+      normalizedLines.push(openFence)
+      openFence = null
+      normalizedLines.push(line)
+
+      if (fence) {
+        openFence = fence.marker
+      }
+
+      continue
+    }
+
+    normalizedLines.push(line)
+  }
+
+  if (openFence) {
+    normalizedLines.push(openFence)
+  }
+
+  return normalizedLines.join('\n')
 }
 
 const normalizeChatContent = (content: string) => {
-  let normalized = content
-
-  // Handle a complete SSE envelope that reached the renderer unchanged.
-  try {
-    const parsed = JSON.parse(normalized) as { d?: unknown }
-    if (typeof parsed.d === 'string') {
-      normalized = parsed.d
-    }
-  } catch {
-    // Normal assistant text is not JSON.
-  }
-
+  const normalized = unwrapChatPayload(content)
   return normalizeCodeBlocks(normalized)
 }
 

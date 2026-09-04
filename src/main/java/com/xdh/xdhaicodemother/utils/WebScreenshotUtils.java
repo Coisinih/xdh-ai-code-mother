@@ -7,7 +7,6 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xdh.xdhaicodemother.exception.BusinessException;
 import com.xdh.xdhaicodemother.exception.ErrorCode;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
@@ -15,12 +14,20 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * 截图工具
@@ -31,6 +38,8 @@ import java.util.UUID;
 @Slf4j
 public class WebScreenshotUtils {
 
+    private static final String DRIVER_PATH_PROPERTY = "webdriver.chrome.driver";
+    private static final String DRIVER_PATH_ENVIRONMENT_VARIABLE = "CHROMEDRIVER_PATH";
     private static final WebDriver webDriver;
 
     static {
@@ -49,8 +58,7 @@ public class WebScreenshotUtils {
      */
     private static WebDriver initChromeDriver(int width, int height) {
         try {
-            // 自动管理 ChromeDriver
-            WebDriverManager.chromedriver().setup();
+            File driverExecutable = resolveChromeDriver();
             // 配置 Chrome 选项
             ChromeOptions options = new ChromeOptions();
             // 无头模式
@@ -68,16 +76,96 @@ public class WebScreenshotUtils {
             // 设置用户代理
             options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
             // 创建驱动
-            WebDriver driver = new ChromeDriver(options);
+            ChromeDriverService service = new ChromeDriverService.Builder()
+                    .usingDriverExecutable(driverExecutable)
+                    .build();
+            WebDriver driver = new ChromeDriver(service, options);
             // 设置页面加载超时
             driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
             // 设置隐式等待
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
             return driver;
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("初始化 Chrome 浏览器失败", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 Chrome 浏览器失败");
         }
+    }
+
+    private static File resolveChromeDriver() {
+        String configuredPath = System.getProperty(DRIVER_PATH_PROPERTY);
+        if (StrUtil.isBlank(configuredPath)) {
+            configuredPath = System.getenv(DRIVER_PATH_ENVIRONMENT_VARIABLE);
+        }
+        if (StrUtil.isNotBlank(configuredPath)) {
+            File configuredDriver = new File(configuredPath);
+            if (configuredDriver.isFile()) {
+                return configuredDriver;
+            }
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,
+                    "ChromeDriver 路径不存在: " + configuredDriver.getAbsolutePath());
+        }
+
+        File pathDriver = findDriverOnPath();
+        if (pathDriver != null) {
+            return pathDriver;
+        }
+
+        File cachedDriver = findCachedDriver();
+        if (cachedDriver != null) {
+            return cachedDriver;
+        }
+
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR,
+                "未找到 ChromeDriver，请通过 -Dwebdriver.chrome.driver 或 CHROMEDRIVER_PATH 配置驱动路径");
+    }
+
+    private static File findDriverOnPath() {
+        String pathEnvironment = System.getenv("PATH");
+        if (StrUtil.isBlank(pathEnvironment)) {
+            return null;
+        }
+        List<String> executableNames = List.of("chromedriver.exe", "chromedriver");
+        for (String pathEntry : pathEnvironment.split(File.pathSeparator)) {
+            if (StrUtil.isBlank(pathEntry)) {
+                continue;
+            }
+            for (String executableName : executableNames) {
+                File driver = new File(pathEntry, executableName);
+                if (driver.isFile()) {
+                    return driver;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static File findCachedDriver() {
+        Path userHome = Paths.get(System.getProperty("user.home"));
+        List<Path> cacheRoots = List.of(
+                userHome.resolve(".cache/selenium/chromedriver"),
+                userHome.resolve(".wdm/drivers/chromedriver")
+        );
+        for (Path cacheRoot : cacheRoots) {
+            if (!Files.isDirectory(cacheRoot)) {
+                continue;
+            }
+            try (Stream<Path> paths = Files.walk(cacheRoot, 5)) {
+                Path driver = paths
+                        .filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().equalsIgnoreCase("chromedriver.exe")
+                                || path.getFileName().toString().equalsIgnoreCase("chromedriver"))
+                        .max(Comparator.comparingLong(path -> path.toFile().lastModified()))
+                        .orElse(null);
+                if (driver != null) {
+                    return driver.toFile();
+                }
+            } catch (IOException e) {
+                log.warn("读取 ChromeDriver 缓存目录失败: {}", cacheRoot, e);
+            }
+        }
+        return null;
     }
 
 

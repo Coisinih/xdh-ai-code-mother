@@ -5,9 +5,9 @@
         <div class="chat-history-manage-page__search-grid">
           <div class="chat-history-manage-page__search-item">
             <span class="chat-history-manage-page__search-label">应用 ID：</span>
-            <a-input-number
+            <a-input
               v-model:value="searchForm.appId"
-              :min="1"
+              inputmode="numeric"
               placeholder="按应用ID 搜索"
               style="width: 100%"
             />
@@ -15,9 +15,9 @@
 
           <div class="chat-history-manage-page__search-item">
             <span class="chat-history-manage-page__search-label">用户 ID：</span>
-            <a-input-number
+            <a-input
               v-model:value="searchForm.userId"
-              :min="1"
+              inputmode="numeric"
               placeholder="按用户ID搜索"
               style="width: 100%"
             />
@@ -97,10 +97,15 @@ import { listAllChatHistoryByPageForAdmin } from '@/api/chatHistoryController'
 import { formatDateTime } from '@/utils/app'
 
 type ChatHistorySearchForm = {
-  appId?: number
-  userId?: number
+  appId: string
+  userId: string
   messageType?: string
   message: string
+}
+
+type ChatHistorySearchPayload = Omit<API.ChatHistoryQueryRequest, 'appId' | 'userId'> & {
+  appId?: string
+  userId?: string
 }
 
 const MESSAGE_TYPE_LABEL_MAP: Record<string, string> = {
@@ -124,15 +129,15 @@ const searchParams = reactive<API.ChatHistoryQueryRequest>({
 })
 
 const searchForm = reactive<ChatHistorySearchForm>({
-  appId: undefined,
-  userId: undefined,
+  appId: '',
+  userId: '',
   messageType: undefined,
   message: '',
 })
 
 const messageTypeOptions = [
   { label: '用户', value: 'user' },
-  { label: 'AI', value: 'assistant' },
+  { label: 'AI', value: 'ai' },
 ]
 
 const columns = [
@@ -153,13 +158,15 @@ const pagination = computed(() => ({
   showTotal: (value: number) => `共${value} 条`,
 }))
 
-const buildSearchPayload = (): API.ChatHistoryQueryRequest => {
+const buildSearchPayload = (): ChatHistorySearchPayload => {
+  const appId = searchForm.appId.trim()
+  const userId = searchForm.userId.trim()
   const messageText = searchForm.message.trim()
 
   return {
     ...searchParams,
-    appId: searchForm.appId,
-    userId: searchForm.userId,
+    appId: appId || undefined,
+    userId: userId || undefined,
     messageType: searchForm.messageType,
     message: messageText || undefined,
   }
@@ -168,7 +175,7 @@ const buildSearchPayload = (): API.ChatHistoryQueryRequest => {
 const loadRecords = async () => {
   loading.value = true
   try {
-    const res = await listAllChatHistoryByPageForAdmin(buildSearchPayload())
+    const res = await listAllChatHistoryByPageForAdmin(buildSearchPayload() as API.ChatHistoryQueryRequest)
     if (res.data.code === 0 && res.data.data) {
       records.value = res.data.data.records ?? []
       total.value = res.data.data.totalRow ?? 0
@@ -187,8 +194,8 @@ const handleSearch = () => {
 }
 
 const resetSearch = () => {
-  searchForm.appId = undefined
-  searchForm.userId = undefined
+  searchForm.appId = ''
+  searchForm.userId = ''
   searchForm.messageType = undefined
   searchForm.message = ''
   searchParams.pageNum = 1

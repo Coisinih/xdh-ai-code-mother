@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/config/runtime'
 import { type AppIdentifier } from '@/utils/app'
+import { unwrapChatPayload } from '@/utils/chatPayload'
 
 type StreamHandlers = {
   onChunk: (chunk: string) => void
@@ -12,18 +13,7 @@ type ParsedSsePayload = {
   event?: string
 }
 
-const unwrapChunkPayload = (payload: string) => {
-  try {
-    const parsed = JSON.parse(payload) as { d?: string }
-    if (typeof parsed.d === 'string') {
-      return parsed.d
-    }
-  } catch {
-    // Fall back to raw payload when the backend returns plain text.
-  }
-
-  return payload
-}
+const unwrapChunkPayload = (payload: string) => unwrapChatPayload(payload)
 
 const parseSseBlock = (block: string): ParsedSsePayload => {
   const normalizedBlock = block.trim()
