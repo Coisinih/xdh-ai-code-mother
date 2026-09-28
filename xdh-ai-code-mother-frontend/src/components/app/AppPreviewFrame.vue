@@ -93,9 +93,10 @@ defineExpose({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 320px;
-  color: var(--app-text-secondary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
 }
 
 .app-preview-frame__iframe {
@@ -104,9 +105,9 @@ defineExpose({
   width: 100%;
   height: 100%;
   min-height: 0;
-  background: #ffffff;
-  border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
 .app-preview-frame :deep(.ant-empty) {

@@ -1,10 +1,12 @@
 <template>
-  <a-config-provider :locale="locale">
+  <a-config-provider :locale="locale" :theme="antdTheme">
     <BasicLayout />
   </a-config-provider>
 </template>
 
 <script setup lang="ts">
+import type { ThemeConfig } from 'ant-design-vue/es/config-provider/context'
+
 import BasicLayout from '@/layouts/BasicLayout.vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import dayjs from 'dayjs'
@@ -15,41 +17,31 @@ dayjs.locale('zh-cn')
 dayjs.extend(relativeTime)
 
 const locale = zhCN
+
+/**
+ * 让 antd 组件与自定义样式共用同一套品牌令牌，
+ * 彻底解决此前"组件默认蓝 + 自定义蓝"两套主色并存的问题。
+ */
+const antdTheme: ThemeConfig = {
+  token: {
+    colorPrimary: '#C2410C',
+    colorInfo: '#C2410C',
+    colorLink: '#C2410C',
+    colorLinkHover: '#9A3412',
+    colorSuccess: '#16A34A',
+    colorWarning: '#D97706',
+    colorError: '#DC2626',
+    colorTextBase: '#1C1917',
+    colorBgBase: '#FFFFFF',
+    colorBorder: '#E4DCD0',
+    colorBorderSecondary: '#EFE9DF',
+    borderRadius: 10,
+    borderRadiusLG: 14,
+    borderRadiusSM: 8,
+    controlHeight: 40,
+    controlHeightLG: 46,
+    fontSize: 15,
+    boxShadowSecondary: '0 8px 24px rgba(28, 25, 23, 0.07)',
+  },
+}
 </script>
-
-<style>
-:root {
-  --app-bg: #e8f7ff;
-  --app-surface: rgba(255, 255, 255, 0.96);
-  --app-border: rgba(220, 230, 255, 0.9);
-  --app-text: #172033;
-  --app-text-secondary: #64748b;
-  --app-primary: #1f7aff;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#app {
-  min-height: 100%;
-  background: transparent;
-}
-
-body {
-  margin: 0;
-  color: var(--app-text);
-  font-family: 'Avenir Next', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: #ffffff;
-}
-
-#app {
-  min-height: 100vh;
-}
-
-a {
-  color: inherit;
-}
-</style>

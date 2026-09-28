@@ -1,5 +1,12 @@
 <template>
-  <div class="user-manage-page">
+  <div class="page-shell user-manage-page">
+    <header class="page-shell__header">
+      <div>
+        <h1 class="page-shell__title">用户管理</h1>
+        <p class="page-shell__desc">查看平台注册用户，维护账号基础信息。</p>
+      </div>
+    </header>
+
     <a-card :bordered="false" class="user-manage-page__search-card">
       <a-form :model="searchParams" layout="inline" @finish="doSearch">
         <a-form-item label="账号">
@@ -14,7 +21,7 @@
       </a-form>
     </a-card>
 
-    <a-card :bordered="false">
+    <a-card :bordered="false" class="user-manage-page__table-card">
       <a-table
         :columns="columns"
         :data-source="data"
@@ -44,7 +51,7 @@
           </template>
 
           <template v-else-if="column.key === 'action'">
-            <a-button danger @click="doDelete(record.id)">删除</a-button>
+            <a-button danger size="small" @click="doDelete(record.id)">删除</a-button>
           </template>
         </template>
       </a-table>
@@ -160,13 +167,26 @@ const columns = [
 </script>
 
 <style scoped>
-.user-manage-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.user-manage-page__search-card,
+.user-manage-page__table-card {
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-xs);
 }
 
-.user-manage-page__search-card {
-  border-radius: 24px;
+.user-manage-page__search-card :deep(.ant-card-body) {
+  padding: var(--space-5);
+}
+
+.user-manage-page__table-card :deep(.ant-card-body) {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+
+.user-manage-page :deep(.ant-form-item) {
+  margin-bottom: var(--space-3);
+}
+
+.user-manage-page :deep(.ant-image-img) {
+  object-fit: cover;
 }
 </style>

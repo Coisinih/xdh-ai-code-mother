@@ -72,7 +72,7 @@ const html = computed(() => renderMarkdown(props.content))
 }
 
 .markdown-content :deep(a) {
-  color: #1f7aff;
+  color: var(--color-brand-700);
   text-decoration: underline;
 }
 

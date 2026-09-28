@@ -2,55 +2,89 @@
   <div class="app-chat-page">
     <header class="app-chat-page__header">
       <div class="app-chat-page__header-left">
-        <a-button class="app-chat-page__back" size="large" type="text" @click="goHome">
+        <a-button
+          aria-label="返回首页"
+          class="app-chat-page__back"
+          size="large"
+          type="text"
+          @click="goHome"
+        >
           <template #icon>
             <LeftOutlined />
           </template>
         </a-button>
         <h1 class="app-chat-page__title">{{ appName }}</h1>
-        <a-tag v-if="appDetail?.codeGenType" color="blue" class="code-gen-type-tag">
+        <a-tag v-if="appDetail?.codeGenType" color="orange" class="code-gen-type-tag">
           {{ getCodeGenTypeText(appDetail.codeGenType) }}
         </a-tag>
       </div>
 
       <div class="app-chat-page__header-right">
-        <a-button
-          :disabled="!appDetail.id"
-          class="app-chat-page__detail-trigger"
-          size="large"
-          @click="openAppDetailModal"
-        >
-          <template #icon>
-            <InfoCircleOutlined />
+        <template v-if="!isCompact">
+          <a-button
+            :disabled="!appDetail.id"
+            class="app-chat-page__detail-trigger"
+            @click="openAppDetailModal"
+          >
+            <template #icon>
+              <InfoCircleOutlined />
+            </template>
+            应用详情
+          </a-button>
+          <a-button v-if="deployUrl" @click="openDeployUrl">访问已部署地址</a-button>
+          <a-button
+            :disabled="!canDeployApp"
+            :loading="downloading"
+            @click="handleDownloadCode"
+          >
+            <template #icon>
+              <DownloadOutlined />
+            </template>
+            下载代码
+          </a-button>
+          <a-button
+            :disabled="!canDeployApp"
+            :loading="deploying"
+            type="primary"
+            @click="handleDeploy"
+          >
+            <template #icon>
+              <RocketOutlined />
+            </template>
+            {{ hasDeployedApp ? '重新部署' : '部署' }}
+          </a-button>
+        </template>
+
+        <a-dropdown v-else placement="bottomRight" trigger="click">
+          <a-button aria-label="应用操作" class="app-chat-page__compact-trigger">
+            <template #icon>
+              <MoreOutlined />
+            </template>
+            应用操作
+          </a-button>
+          <template #overlay>
+            <a-menu @click="handleCompactAction">
+              <a-menu-item key="detail" :disabled="!appDetail.id">
+                <InfoCircleOutlined />
+                <span class="app-chat-page__menu-label">应用详情</span>
+              </a-menu-item>
+              <a-menu-item v-if="deployUrl" key="visit">
+                <ExportOutlined />
+                <span class="app-chat-page__menu-label">访问已部署地址</span>
+              </a-menu-item>
+              <a-menu-item key="download" :disabled="!canDeployApp">
+                <DownloadOutlined />
+                <span class="app-chat-page__menu-label">下载代码</span>
+              </a-menu-item>
+              <a-menu-item key="deploy" :disabled="!canDeployApp">
+                <RocketOutlined />
+                <span class="app-chat-page__menu-label">
+                  {{ hasDeployedApp ? '重新部署' : '部署' }}
+                </span>
+              </a-menu-item>
+            </a-menu>
           </template>
-          应用详情
-        </a-button>
-        <a-button v-if="deployUrl" size="large" @click="openDeployUrl">访问已部署地址</a-button>
-        <a-button
-          :disabled="!canDeployApp"
-          class="app-chat-page__download-btn"
-          :loading="downloading"
-          size="large"
-          @click="handleDownloadCode"
-        >
-          <template #icon>
-            <DownloadOutlined />
-          </template>
-          下载代码
-        </a-button>
-        <a-button
-          :disabled="!canDeployApp"
-          class="app-chat-page__deploy-btn"
-          :loading="deploying"
-          size="large"
-          type="primary"
-          @click="handleDeploy"
-        >
-          <template #icon>
-            <RocketOutlined />
-          </template>
-          {{ hasDeployedApp ? '重新部署' : '部署' }}
-        </a-button>
+        </a-dropdown>
       </div>
     </header>
 
@@ -238,7 +272,7 @@
         <a-descriptions-item label="应用名称">{{ appName }}</a-descriptions-item>
         <a-descriptions-item label="更新时间">{{ appUpdatedAt }}</a-descriptions-item>
         <a-descriptions-item label="应用类型">
-          <a-tag color="blue" class="code-gen-type-tag">
+          <a-tag color="orange" class="code-gen-type-tag">
             {{ appTypeText }}
           </a-tag>
         </a-descriptions-item>
@@ -300,11 +334,12 @@ import {
   ExportOutlined,
   InfoCircleOutlined,
   LeftOutlined,
+  MoreOutlined,
   ReloadOutlined,
   RocketOutlined,
   SendOutlined,
 } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
+import { message, type MenuProps } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 
@@ -370,6 +405,13 @@ const messageContainerRef = ref<HTMLElement>()
 const currentAbortController = ref<AbortController>()
 const scrollToBottomFrame = ref<number | null>(null)
 const scrollToBottomPending = ref(false)
+const isCompact = ref(false)
+let chatMediaQuery: MediaQueryList | undefined
+
+const syncChatCompact = () => {
+  isCompact.value = chatMediaQuery?.matches ?? false
+}
+
 const visualEditor = new VisualEditor({
   onElementSelected(elementInfo) {
     selectedElement.value = elementInfo
@@ -1037,6 +1079,25 @@ const goHome = async () => {
   await router.push('/')
 }
 
+const handleCompactAction: MenuProps['onClick'] = (event) => {
+  const key = event.key as string
+  if (key === 'detail') {
+    openAppDetailModal()
+    return
+  }
+  if (key === 'visit') {
+    openDeployUrl()
+    return
+  }
+  if (key === 'download') {
+    void handleDownloadCode()
+    return
+  }
+  if (key === 'deploy') {
+    void handleDeploy()
+  }
+}
+
 const fillOptimizePrompt = () => {
   if (!canChatOnApp.value) {
     return
@@ -1075,6 +1136,9 @@ const handleInitialPrompt = async () => {
 
 onMounted(async () => {
   window.addEventListener('message', visualEditor.handleIframeMessage)
+  chatMediaQuery = window.matchMedia('(max-width: 900px)')
+  syncChatCompact()
+  chatMediaQuery.addEventListener('change', syncChatCompact)
 
   const loaded = await loadAppDetail()
   if (!loaded) {
@@ -1088,6 +1152,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('message', visualEditor.handleIframeMessage)
+  chatMediaQuery?.removeEventListener('change', syncChatCompact)
   visualEditor.destroy()
 
   if (scrollToBottomFrame.value !== null) {
@@ -1103,15 +1168,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0;
+  gap: var(--space-4);
   height: 100%;
   max-height: 100%;
   min-height: 0;
-  padding: 0;
+  padding: var(--space-4);
   overflow: hidden;
-  background:
-    radial-gradient(circle at top left, rgba(114, 255, 227, 0.2), transparent 28%),
-    radial-gradient(circle at right top, rgba(118, 149, 255, 0.18), transparent 24%), #f7fbff;
+  background: transparent;
 }
 
 .app-chat-page__header {
@@ -1119,44 +1182,75 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 18px 22px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 0;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
 }
 
 .app-chat-page__header-left,
 .app-chat-page__header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.app-chat-page__header-left {
+  flex: 1;
+}
+
+.app-chat-page__header-right {
+  flex-shrink: 0;
 }
 
 .app-chat-page__back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  color: var(--app-text);
-  border-radius: 999px;
-  background: rgba(241, 245, 249, 0.9);
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  color: var(--text-primary);
+  background: var(--bg-surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.app-chat-page__back:hover,
+.app-chat-page__back:focus {
+  color: var(--color-brand-700) !important;
+  border-color: var(--color-brand-300);
 }
 
 .app-chat-page__title {
+  overflow: hidden;
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-chat-page__compact-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-chat-page__menu-label {
+  margin-left: var(--space-2);
 }
 
 .app-chat-page__content {
   box-sizing: border-box;
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1.35fr);
-  gap: 2px;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(400px, 1.3fr);
+  gap: var(--space-4);
   height: 0;
   max-height: 100%;
   min-height: 0;
@@ -1170,19 +1264,19 @@ onBeforeUnmount(() => {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 0;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
 }
 
 .app-chat-page__messages {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--space-2);
   min-height: 0;
-  padding: 22px;
+  padding: var(--space-5);
   overflow-y: auto;
   scroll-behavior: auto;
 }
@@ -1198,11 +1292,12 @@ onBeforeUnmount(() => {
 
 .chat-message {
   display: flex;
-  gap: 12px;
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 
 .chat-message + .chat-message {
-  margin-top: 8px;
+  margin-top: var(--space-3);
 }
 
 .chat-message--user {
@@ -1214,25 +1309,27 @@ onBeforeUnmount(() => {
 }
 
 .chat-message__bubble {
-  max-width: min(86%, 640px);
-  padding: 6px 14px;
+  max-width: min(84%, 620px);
+  padding: var(--space-3) var(--space-4);
   word-break: break-word;
-  border-radius: 20px;
+  border-radius: 14px;
 }
 
 .chat-message--assistant .chat-message__bubble {
-  background: #f5f8ff;
-  border: 1px solid #dce7ff;
+  background: var(--bg-surface-muted);
+  border: 1px solid var(--border-color);
+  border-top-left-radius: var(--radius-xs);
 }
 
 .chat-message--user .chat-message__bubble {
   color: #ffffff;
-  background: linear-gradient(135deg, #1f7aff, #14b8a6);
+  background: var(--color-brand-700);
+  border-top-right-radius: var(--radius-xs);
 }
 
 .chat-message__content {
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: var(--font-size-base);
+  line-height: 1.7;
 }
 
 .chat-message--user .chat-message__content {
@@ -1245,20 +1342,20 @@ onBeforeUnmount(() => {
 
 .app-chat-page__composer {
   flex-shrink: 0;
-  padding: 20px 22px 22px;
-  border-top: 1px solid rgba(220, 230, 255, 0.9);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--border-color);
 }
 
 .app-chat-page__composer-tools {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-3);
 }
 
 .app-chat-page__selected-element-alert {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-3);
 }
 
 .app-chat-page__selected-element-alert-desc {
-  color: var(--app-text);
+  color: var(--text-primary);
   line-height: 1.7;
   white-space: pre-line;
 }
@@ -1269,8 +1366,8 @@ onBeforeUnmount(() => {
 }
 
 .app-chat-page__textarea-wrap :deep(.ant-input) {
-  padding-right: 52px;
-  padding-bottom: 48px;
+  padding-right: 56px;
+  padding-bottom: 52px;
 }
 
 .app-chat-page__send-button {
@@ -1281,9 +1378,10 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
+  border-radius: var(--radius-sm);
 }
 
 .preview-panel__header {
@@ -1291,44 +1389,37 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 22px 24px 16px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .preview-panel__title {
   margin: 0;
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: var(--font-size-md);
+  font-weight: 600;
 }
 
 .preview-panel__body {
   display: flex;
   flex: 1;
   min-height: 0;
-  padding: 0 20px 20px;
+  padding: var(--space-4);
   overflow: hidden;
 }
 
-.preview-panel__loading {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  min-height: 320px;
-  color: var(--app-text-secondary);
-}
-
+.preview-panel__loading,
 .preview-panel__load-error {
   display: flex;
   flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-3);
   min-height: 320px;
-  color: var(--app-text-secondary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 
 .preview-panel__load-error p {
@@ -1341,49 +1432,40 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   min-height: 0;
-  background: #ffffff;
-  border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
 .preview-panel__body :deep(.ant-empty) {
   margin: auto;
 }
 
-.preview-panel__link-button {
-  padding-left: 0;
-}
-
 .preview-panel__edit-button,
 .preview-panel__link-button {
-  padding: 0;
-  color: #1677ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
 }
 
 .preview-panel__edit-button:hover,
 .preview-panel__edit-button:focus,
 .preview-panel__link-button:hover,
 .preview-panel__link-button:focus {
-  color: #4096ff;
+  color: var(--color-brand-800) !important;
+  background: var(--color-primary-soft);
 }
 
 .preview-panel__edit-button--active,
 .preview-panel__edit-button--active:hover,
 .preview-panel__edit-button--active:focus {
-  color: #ff4d4f;
-}
-
-.app-chat-page__download-btn {
-  color: #1677ff;
-  border-color: #1677ff;
-  background: #ffffff;
-}
-
-.app-chat-page__download-btn:hover,
-.app-chat-page__download-btn:focus {
-  color: #4096ff;
-  border-color: #4096ff;
-  background: #ffffff;
+  color: var(--color-brand-800) !important;
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 0 0 1px var(--color-primary-soft-border);
 }
 
 .app-chat-page__detail-descriptions :deep(.ant-descriptions-view) {
@@ -1400,18 +1482,18 @@ onBeforeUnmount(() => {
 
 .app-chat-page__detail-descriptions :deep(.ant-descriptions-item-label) {
   width: 88px;
-  color: var(--app-text-secondary);
+  color: var(--text-secondary);
 }
 
 .app-chat-page__detail-descriptions :deep(.ant-descriptions-item-content) {
-  color: var(--app-text);
+  color: var(--text-primary);
 }
 
 .app-chat-page__detail-actions {
   display: flex;
   width: 100%;
-  gap: 16px;
-  margin-top: 20px;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
 }
 
 .app-chat-page__detail-actions :deep(.ant-btn) {
@@ -1422,26 +1504,25 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 4px 0;
+  padding: var(--space-2) var(--space-1) 0;
   text-align: center;
 }
 
 .deploy-success-modal__icon {
-  margin-top: 8px;
-  color: #52c41a;
+  margin-top: var(--space-2);
+  color: var(--color-success);
   font-size: 48px;
 }
 
 .deploy-success-modal__headline {
-  margin: 18px 0 10px;
-  color: #1f2937;
-  font-size: 1.5rem;
-  font-weight: 700;
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
 }
 
 .deploy-success-modal__desc {
-  margin: 0 0 20px;
-  color: #6b7280;
+  margin: 0 0 var(--space-5);
+  color: var(--text-secondary);
   line-height: 1.7;
 }
 
@@ -1450,16 +1531,16 @@ onBeforeUnmount(() => {
   align-items: center;
   width: 100%;
   min-height: 48px;
-  padding: 0 10px 0 14px;
-  background: #ffffff;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
+  padding: 0 var(--space-3) 0 var(--space-4);
+  background: var(--bg-surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
 }
 
 .deploy-success-modal__url-text {
   flex: 1;
   overflow: hidden;
-  color: #1f2937;
+  color: var(--text-primary);
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1472,8 +1553,8 @@ onBeforeUnmount(() => {
 .deploy-success-modal__actions {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-top: 22px;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
 }
 
 @media (max-width: 1280px) {
@@ -1483,29 +1564,58 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .app-chat-page {
-    padding: 0;
+    height: auto;
+    max-height: none;
+    padding: var(--space-3);
+    overflow: visible;
   }
 
-  .app-chat-page__header,
-  .app-chat-page__header-left,
-  .app-chat-page__header-right,
-  .preview-panel__header {
+  .app-chat-page__header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
+    gap: var(--space-3);
   }
 
-  .app-chat-page__messages,
-  .app-chat-page__composer,
-  .preview-panel__header,
-  .preview-panel__body {
-    padding-right: 16px;
-    padding-left: 16px;
+  .app-chat-page__header-left,
+  .app-chat-page__header-right {
+    width: 100%;
+  }
+
+  .app-chat-page__header-right {
+    justify-content: flex-end;
+  }
+
+  .app-chat-page__content {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .app-chat-page__panel {
+    height: auto;
+  }
+
+  .app-chat-page__messages {
+    min-height: 44vh;
+    max-height: 58vh;
+  }
+
+  .app-chat-page__panel--preview {
+    min-height: 60vh;
+  }
+
+  .preview-panel__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   .preview-panel__body {
-    padding-bottom: 16px;
+    min-height: 42vh;
   }
 
   .chat-message__bubble {

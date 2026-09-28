@@ -1,5 +1,12 @@
 <template>
-  <div class="app-manage-page">
+  <div class="page-shell app-manage-page">
+    <header class="page-shell__header">
+      <div>
+        <h1 class="page-shell__title">应用管理</h1>
+        <p class="page-shell__desc">检索全站应用，维护精选状态、封面与基础信息。</p>
+      </div>
+    </header>
+
     <a-card :bordered="false" class="app-manage-page__search-card">
       <div class="app-manage-page__search-row">
         <div class="app-manage-page__search-grid">
@@ -49,7 +56,7 @@
       </div>
     </a-card>
 
-    <a-card :bordered="false">
+    <a-card :bordered="false" class="app-manage-page__table-card">
       <a-table
         :columns="columns"
         :data-source="records"
@@ -66,7 +73,6 @@
               :preview="false"
               :src="record.cover"
               :width="72"
-              style="border-radius: 10px"
             />
             <span v-else>-</span>
           </template>
@@ -76,7 +82,7 @@
           </template>
 
           <template v-else-if="column.dataIndex === 'codeGenType'">
-            <a-tag color="blue">
+            <a-tag color="orange">
               {{ getCodeGenTypeText(record.codeGenType) }}
             </a-tag>
           </template>
@@ -304,33 +310,38 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.app-manage-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.app-manage-page__search-card,
+.app-manage-page__table-card {
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-xs);
 }
 
-.app-manage-page__search-card {
-  border-radius: 24px;
+.app-manage-page__search-card :deep(.ant-card-body) {
+  padding: var(--space-5);
+}
+
+.app-manage-page__table-card :deep(.ant-card-body) {
+  padding: var(--space-3) var(--space-5) var(--space-5);
 }
 
 .app-manage-page__search-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .app-manage-page__search-grid {
   display: grid;
   flex: 1;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .app-manage-page__search-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .app-manage-page__search-item--checkbox {
@@ -339,7 +350,8 @@ onMounted(() => {
 
 .app-manage-page__search-label {
   flex: 0 0 84px;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
   text-align: right;
 }
 
@@ -357,16 +369,20 @@ onMounted(() => {
 }
 
 .app-manage-page__unfeature-button {
-  color: #d46b08;
-  background: #fff7e6;
-  border-color: #ffd591;
+  color: var(--color-brand-700);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary-soft-border);
 }
 
 .app-manage-page__unfeature-button:hover,
 .app-manage-page__unfeature-button:focus {
-  color: #ad4e00;
-  background: #ffe7ba;
-  border-color: #ffc069;
+  color: var(--color-brand-800) !important;
+  background: var(--color-brand-100) !important;
+  border-color: var(--color-brand-300) !important;
+}
+
+.app-manage-page :deep(.ant-image-img) {
+  border-radius: var(--radius-sm);
 }
 
 @media (max-width: 1360px) {

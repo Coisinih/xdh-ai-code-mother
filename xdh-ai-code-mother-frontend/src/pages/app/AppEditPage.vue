@@ -45,11 +45,11 @@
 
           <a-form-item label="优先级">
             <a-input-number
+              class="app-edit-page__input-number"
               v-model:value="formState.priority"
               :disabled="!isAdmin"
               :max="999"
               :min="0"
-              style="width: 100%"
             />
             <div class="app-edit-page__field-tip">
               {{ isAdmin ? '精选应用建议设置为 99。' : '普通用户暂不支持修改优先级。' }}
@@ -83,7 +83,7 @@
         <AppPreviewFrame
           :preview-url="previewUrl"
           :show-preview="Boolean(previewUrl)"
-          empty-description="当前应用还没有可展示的网页���"
+          empty-description="当前应用还没有可展示的网页。"
           iframe-title="应用预览"
           min-height="600px"
         />
@@ -253,19 +253,22 @@ onMounted(() => {
 .app-edit-page {
   display: grid;
   grid-template-columns: minmax(360px, 520px) minmax(0, 1fr);
-  gap: 24px;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
 }
 
 .app-edit-page__form-panel,
 .app-edit-page__preview-panel {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(220, 230, 255, 0.9);
-  border-radius: 28px;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .app-edit-page__form-panel {
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 .app-edit-page__header,
@@ -273,35 +276,51 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .app-edit-page__title,
 .app-edit-page__preview-title {
   margin: 0;
-  font-size: 1.7rem;
-  font-weight: 700;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .app-edit-page__desc,
 .app-edit-page__preview-desc,
 .app-edit-page__field-tip {
-  margin-top: 8px;
-  color: var(--app-text-secondary);
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+}
+
+.app-edit-page__input-number {
+  width: 100%;
 }
 
 .app-edit-page__preview-panel {
   display: flex;
   flex-direction: column;
   min-height: 680px;
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 .app-edit-page__preview-body {
   display: flex;
   flex: 1;
   min-height: 0;
+}
+
+.app-edit-page :deep(.ant-descriptions-header) {
+  margin-bottom: var(--space-4);
+}
+
+.app-edit-page :deep(.ant-descriptions-title) {
+  font-size: var(--font-size-md);
+  font-weight: 600;
 }
 
 @media (max-width: 1180px) {
@@ -319,7 +338,11 @@ onMounted(() => {
 
   .app-edit-page__form-panel,
   .app-edit-page__preview-panel {
-    padding: 18px;
+    padding: var(--space-5);
+  }
+
+  .app-edit-page__preview-panel {
+    min-height: 0;
   }
 }
 </style>

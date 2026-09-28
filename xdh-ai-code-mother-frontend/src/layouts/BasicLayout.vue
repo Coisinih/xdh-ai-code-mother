@@ -1,5 +1,5 @@
 <template>
-  <a-layout :class="['basic-layout', isHomePage ? 'basic-layout--home' : '']" :style="layoutStyle">
+  <a-layout class="basic-layout" :style="layoutStyle">
     <a-layout-header ref="headerRef" class="basic-layout__header">
       <GlobalHeader />
     </a-layout-header>
@@ -8,7 +8,6 @@
       :class="[
         'basic-layout__content',
         isImmersiveLayout ? 'basic-layout__content--immersive' : '',
-        isHomePage ? 'basic-layout__content--home' : '',
       ]"
     >
       <div class="basic-layout__content-inner">
@@ -20,22 +19,15 @@
       </div>
     </a-layout-content>
 
-    <a-layout-footer ref="footerRef" class="basic-layout__footer">
+    <a-layout-footer v-if="!isImmersiveLayout" class="basic-layout__footer">
       <GlobalFooter />
     </a-layout-footer>
   </a-layout>
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  type ComponentPublicInstance,
-  type CSSProperties,
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, type CSSProperties } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 
 import GlobalFooter from './components/GlobalFooter.vue'
@@ -43,12 +35,9 @@ import GlobalHeader from './components/GlobalHeader.vue'
 
 const route = useRoute()
 const isImmersiveLayout = computed(() => route.meta.layout === 'immersive')
-const isHomePage = computed(() => route.path === '/')
 
 const headerRef = ref<ComponentPublicInstance | HTMLElement | null>(null)
-const footerRef = ref<ComponentPublicInstance | HTMLElement | null>(null)
-const headerHeight = ref(0)
-const footerHeight = ref(0)
+const headerHeight = ref(72)
 
 let resizeObserver: ResizeObserver | undefined
 
@@ -63,13 +52,11 @@ const resolveElement = (target: ComponentPublicInstance | HTMLElement | null) =>
 }
 
 const updateLayoutHeights = () => {
-  headerHeight.value = resolveElement(headerRef.value)?.offsetHeight ?? 0
-  footerHeight.value = resolveElement(footerRef.value)?.offsetHeight ?? 0
+  headerHeight.value = resolveElement(headerRef.value)?.offsetHeight ?? 72
 }
 
 const layoutStyle = computed<CSSProperties>(() => ({
   '--layout-header-height': `${headerHeight.value}px`,
-  '--layout-footer-height': `${footerHeight.value}px`,
 }))
 
 onMounted(async () => {
@@ -81,13 +68,9 @@ onMounted(async () => {
   })
 
   const headerElement = resolveElement(headerRef.value)
-  const footerElement = resolveElement(footerRef.value)
 
   if (headerElement) {
     resizeObserver.observe(headerElement)
-  }
-  if (footerElement) {
-    resizeObserver.observe(footerElement)
   }
 
   window.addEventListener('resize', updateLayoutHeights)
@@ -102,12 +85,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .basic-layout {
   min-height: 100vh;
-  background: #ffffff !important;
-}
-
-.basic-layout--home {
-  background-image: linear-gradient(to top, #a8edea 0%, #fed6e3 100%) !important;
-  background-attachment: fixed;
+  /* 透明，让页面底部的温馨氛围背景透出来 */
+  background: transparent !important;
 }
 
 .basic-layout :deep(.ant-layout),
@@ -119,13 +98,13 @@ onBeforeUnmount(() => {
 .basic-layout__header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-sticky, 100);
   height: auto;
-  padding: 0;
+  padding: 0 var(--space-6);
   line-height: normal;
-  background: #ffffff !important;
-  backdrop-filter: none;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.86) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
   box-shadow: none;
 }
 
@@ -135,19 +114,16 @@ onBeforeUnmount(() => {
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  padding: 32px 20px 104px;
-  background: #ffffff !important;
-}
-
-.basic-layout__content--home {
-  padding: 0 0 104px;
+  padding: var(--space-8) var(--space-6) var(--space-12);
   background: transparent !important;
 }
 
 .basic-layout__content--immersive {
-  height: calc(100vh - var(--layout-header-height, 0px) - var(--layout-footer-height, 0px));
-  min-height: calc(100vh - var(--layout-header-height, 0px) - var(--layout-footer-height, 0px));
-  max-height: calc(100vh - var(--layout-header-height, 0px) - var(--layout-footer-height, 0px));
+  height: calc(100vh - var(--layout-header-height, 72px));
+  height: calc(100dvh - var(--layout-header-height, 72px));
+  min-height: 480px;
+  max-height: calc(100vh - var(--layout-header-height, 72px));
+  max-height: calc(100dvh - var(--layout-header-height, 72px));
   padding: 0;
   background: transparent !important;
   overflow: hidden;
@@ -174,26 +150,27 @@ onBeforeUnmount(() => {
 }
 
 .basic-layout__footer {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 90;
+  position: static;
   padding: 0;
-  background: transparent;
+  background: transparent !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+  .basic-layout__header {
+    padding: 0 var(--space-4);
+  }
+
   .basic-layout__content {
-    padding: 20px 16px 112px;
+    padding: var(--space-5) var(--space-4) var(--space-8);
   }
 
-  .basic-layout__content--home {
-    padding: 0 0 104px;
-  }
-
+  /* 小屏下沉浸式布局允许纵向滚动，避免对话页内容被裁切 */
   .basic-layout__content--immersive {
+    height: auto;
+    max-height: none;
+    min-height: calc(100dvh - var(--layout-header-height, 72px));
     padding: 0;
+    overflow-y: auto;
   }
 }
 </style>

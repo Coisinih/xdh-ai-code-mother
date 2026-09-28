@@ -1,5 +1,12 @@
 <template>
-  <div class="chat-history-manage-page">
+  <div class="page-shell chat-history-manage-page">
+    <header class="page-shell__header">
+      <div>
+        <h1 class="page-shell__title">对话管理</h1>
+        <p class="page-shell__desc">查看全站对话记录，用于排查生成效果与内容质量问题。</p>
+      </div>
+    </header>
+
     <a-card :bordered="false" class="chat-history-manage-page__search-card">
       <div class="chat-history-manage-page__search-row">
         <div class="chat-history-manage-page__search-grid">
@@ -53,7 +60,7 @@
       </div>
     </a-card>
 
-    <a-card :bordered="false">
+    <a-card :bordered="false" class="chat-history-manage-page__table-card">
       <a-table
         :columns="columns"
         :data-source="records"
@@ -236,38 +243,44 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.chat-history-manage-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.chat-history-manage-page__search-card,
+.chat-history-manage-page__table-card {
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-xs);
 }
 
-.chat-history-manage-page__search-card {
-  border-radius: 24px;
+.chat-history-manage-page__search-card :deep(.ant-card-body) {
+  padding: var(--space-5);
+}
+
+.chat-history-manage-page__table-card :deep(.ant-card-body) {
+  padding: var(--space-3) var(--space-5) var(--space-5);
 }
 
 .chat-history-manage-page__search-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .chat-history-manage-page__search-grid {
   display: grid;
   flex: 1;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .chat-history-manage-page__search-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .chat-history-manage-page__search-label {
   flex: 0 0 84px;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
   text-align: right;
 }
 
@@ -288,6 +301,7 @@ onMounted(() => {
 .chat-history-manage-page__message-cell {
   display: -webkit-box;
   overflow: hidden;
+  color: var(--text-secondary);
   line-height: 1.7;
   word-break: break-word;
   -webkit-box-orient: vertical;

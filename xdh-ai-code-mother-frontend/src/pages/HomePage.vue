@@ -1,51 +1,67 @@
 <template>
   <div class="home-page">
-    <section class="hero-section">
-      <div class="hero-section__content">
-        <h1 class="hero-section__title">
-          <span>一句话</span>
-          <img alt="logo" class="hero-section__title-logo" src="@/assets/logo.png" />
-          <span>生所想</span>
-        </h1>
-        <p class="hero-section__subtitle">用 AI 对话轻松创建应用和网站</p>
+    <section class="hero">
+      <div aria-hidden="true" class="hero__decor">
+        <div class="hero__glow"></div>
+        <span class="hero__blob hero__blob--yolk"></span>
+        <span class="hero__blob hero__blob--peach"></span>
+        <span class="hero__blob hero__blob--mint"></span>
+      </div>
 
-        <div class="hero-section__composer">
+      <div class="hero__inner">
+        <span class="hero__badge">
+          <img alt="" class="hero__badge-logo" src="@/assets/logo.png" />
+          咸蛋黄 AI · 零代码应用生成
+        </span>
+
+        <h1 class="hero__title">一句话生所想</h1>
+        <p class="hero__subtitle">
+          用 AI 对话轻松创建应用和网站，生成后即可实时预览、一键部署并下载源码
+        </p>
+
+        <div class="composer">
           <a-textarea
             v-model:value="prompt"
-            :auto-size="{ minRows: 4, maxRows: 7 }"
+            :auto-size="{ minRows: 3, maxRows: 7 }"
             :bordered="false"
             :maxlength="2000"
-            class="hero-section__textarea"
+            class="composer__input"
             placeholder="例如：帮我做一个适配移动端的企业官网，包含首页、产品页和联系表单"
             @press-enter="handleComposerEnter"
           />
 
-          <div class="hero-section__composer-footer">
-            <div class="hero-section__composer-tools">
-              <span class="hero-section__tool-chip">支持中文</span>
-              <span class="hero-section__tool-chip">实时预览</span>
+          <div class="composer__footer">
+            <div class="composer__tools">
+              <span class="composer__chip">
+                <BulbOutlined />
+                支持中文描述
+              </span>
+              <span class="composer__chip">
+                <ThunderboltOutlined />
+                实时预览
+              </span>
             </div>
 
             <a-button
-              class="hero-section__submit"
+              class="composer__submit"
               :loading="creatingApp"
-              shape="circle"
-              size="large"
               type="primary"
               @click="handleCreateApp"
             >
               <template v-if="!creatingApp" #icon>
                 <ArrowUpOutlined />
               </template>
+              生成应用
             </a-button>
           </div>
         </div>
 
-        <div class="hero-section__examples">
+        <div class="hero__examples">
+          <span class="hero__examples-label">试试：</span>
           <button
             v-for="example in examplePrompts"
             :key="example"
-            class="hero-section__example-pill"
+            class="hero__example"
             type="button"
             @click="prompt = example"
           >
@@ -154,7 +170,7 @@
 defineOptions({ name: 'HomePage' })
 
 import { nextTick, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { ArrowUpOutlined } from '@ant-design/icons-vue'
+import { ArrowUpOutlined, BulbOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 
@@ -450,158 +466,273 @@ onBeforeUnmount(() => {
 .home-page {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 72px);
+  gap: var(--space-10);
+  width: 100%;
 }
 
-.hero-section {
+.hero {
   position: relative;
   display: flex;
-  align-items: center;
   justify-content: center;
-  min-height: 58vh;
-  padding: 72px 24px 48px;
+  padding: var(--space-10) 0 var(--space-6);
+  isolation: isolate;
 }
 
-.hero-section__content {
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: -8% -4% 0;
+  z-index: -1;
+  background-image: radial-gradient(rgba(194, 65, 12, 0.1) 1.4px, transparent 1.4px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(closest-side at 50% 42%, #000 28%, transparent 78%);
+  mask-image: radial-gradient(closest-side at 50% 42%, #000 28%, transparent 78%);
+  pointer-events: none;
+}
+
+.hero__decor {
+  position: absolute;
+  inset: -140px 0 auto;
+  height: 680px;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* 底部渐隐，避免装饰层与页面底色之间出现生硬的分界线 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
+}
+
+.hero__glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(1080px, 130%);
+  height: 520px;
+  background:
+    radial-gradient(closest-side, rgba(255, 205, 92, 0.44), transparent 72%),
+    radial-gradient(closest-side at 63% 42%, rgba(255, 170, 120, 0.34), transparent 70%);
+  transform: translateX(-50%);
+}
+
+.hero__blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(34px);
+  opacity: 0.6;
+  animation: hero-float 10s var(--ease-out) infinite;
+}
+
+.hero__blob--yolk {
+  top: 18%;
+  left: 5%;
+  width: 190px;
+  height: 190px;
+  background: #ffd666;
+  opacity: 0.55;
+}
+
+.hero__blob--peach {
+  top: 26%;
+  right: 6%;
+  width: 160px;
+  height: 160px;
+  background: #ffb37a;
+  opacity: 0.5;
+  animation-duration: 12s;
+  animation-direction: reverse;
+}
+
+.hero__blob--mint {
+  right: 20%;
+  bottom: 6%;
+  width: 140px;
+  height: 140px;
+  background: #bfe0f5;
+  opacity: 0.4;
+  animation-duration: 14s;
+}
+
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -16px, 0);
+  }
+}
+
+.hero__inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  width: min(100%, 860px);
-  margin: 0 auto;
+  gap: var(--space-4);
+  width: min(100%, 820px);
   text-align: center;
 }
 
-.hero-section__title {
+.hero__badge {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin: 0;
-  color: #0f172a;
-  font-size: clamp(2.2rem, 5vw, 3.2rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: 0.02em;
+  gap: var(--space-2);
+  padding: 5px 14px 5px 5px;
+  color: var(--color-brand-800);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--color-primary-soft-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-xs);
 }
 
-.hero-section__title-logo {
-  width: 52px;
-  height: 52px;
+.hero__badge-logo {
+  width: 26px;
+  height: 26px;
   object-fit: contain;
-  border-radius: 999px;
-  box-shadow: 0 10px 24px rgba(20, 184, 166, 0.28);
+  border-radius: var(--radius-pill);
 }
 
-.hero-section__subtitle {
+.hero__title {
   margin: 0;
-  color: #64748b;
-  font-size: 1rem;
+  font-size: clamp(2.2rem, 4.6vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+}
+
+.hero__subtitle {
+  margin: 0;
+  max-width: 36em;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
   line-height: 1.7;
 }
 
-.hero-section__composer {
+.composer {
   width: 100%;
-  padding: 20px 22px 16px;
+  margin-top: var(--space-2);
+  padding: var(--space-5);
   text-align: left;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  box-shadow:
-    0 18px 50px rgba(15, 23, 42, 0.08),
-    0 2px 0 rgba(255, 255, 255, 0.8) inset;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
 }
 
-.hero-section__textarea :deep(textarea) {
+.composer:focus-within {
+  border-color: var(--color-brand-300);
+  box-shadow: var(--shadow-lg);
+}
+
+.composer__input :deep(textarea) {
   padding: 0;
-  color: #334155;
-  font-size: 1rem;
-  line-height: 1.75;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  line-height: 1.7;
   background: transparent;
   box-shadow: none;
   resize: none;
 }
 
-.hero-section__textarea :deep(textarea::placeholder) {
-  color: #94a3b8;
+.composer__input :deep(textarea::placeholder) {
+  color: var(--text-tertiary);
 }
 
-.hero-section__composer-footer {
+.composer__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-top: 12px;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color);
 }
 
-.hero-section__composer-tools {
+.composer__tools {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
-.hero-section__tool-chip {
+.composer__chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 6px 12px;
-  color: #64748b;
-  font-size: 0.86rem;
-  background: #f1f5f9;
-  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  background: var(--bg-surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
 }
 
-.hero-section__submit {
+.composer__chip :deep(.anticon) {
+  color: var(--color-brand-600);
+}
+
+.composer__submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
+  gap: 6px;
+  flex-shrink: 0;
   height: 46px;
-  min-width: 46px;
-  border: 0;
-  background: #1e293b;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+  padding: 0 var(--space-6);
+  font-size: var(--font-size-md);
+  border-radius: var(--radius-sm);
 }
 
-.hero-section__submit:hover,
-.hero-section__submit:focus {
-  background: #0f172a !important;
-}
-
-.hero-section__examples {
+.hero__examples {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin-top: 4px;
+  gap: var(--space-2);
 }
 
-.hero-section__example-pill {
+.hero__examples-label {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.hero__example {
   padding: 8px 16px;
-  color: #475569;
-  font-size: 0.92rem;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.hero-section__example-pill:hover {
-  background: #ffffff;
+.hero__example:hover {
+  color: var(--color-brand-700);
+  background: var(--bg-surface);
+  border-color: var(--color-brand-300);
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .home-page__panels {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  width: min(100%, 1280px);
+  gap: var(--space-6);
+  /* 只占屏幕中间约 3/4，避免两大模块铺满整屏 */
+  width: var(--home-panels-width);
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 20px 28px;
 }
 
 .app-section {
@@ -612,25 +743,18 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.home-page :deep(.ant-input-affix-wrapper),
-.home-page :deep(.ant-input),
-.home-page :deep(.ant-input-search .ant-input-group .ant-input-affix-wrapper),
-.home-page :deep(.ant-input-search .ant-input-group .ant-input-group-addon .ant-btn),
-.home-page :deep(.ant-pagination-options-size-changer.ant-select .ant-select-selector),
-.home-page :deep(.ant-pagination .ant-pagination-item),
-.home-page :deep(.ant-pagination .ant-pagination-prev .ant-pagination-item-link),
-.home-page :deep(.ant-pagination .ant-pagination-next .ant-pagination-item-link) {
-  border-radius: 12px;
+.home-page__empty-auth {
+  padding: var(--space-5) 0 var(--space-2);
 }
 
-.home-page__empty-auth {
-  padding: 18px 0 10px;
+.home-page :deep(.ant-empty) {
+  padding: var(--space-6) 0;
 }
 
 .app-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: var(--space-4);
 }
 
 @media (max-width: 1280px) {
@@ -640,39 +764,44 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 960px) {
-  .hero-section {
-    min-height: auto;
-    padding: 48px 18px 36px;
-  }
-
-  .hero-section__composer-footer {
-    align-items: flex-end;
-    flex-direction: column;
+  .home-page__panels {
+    width: 100%;
   }
 
   .app-grid {
     grid-template-columns: 1fr;
   }
+
+  .hero {
+    padding: var(--space-6) 0 var(--space-2);
+  }
 }
 
 @media (max-width: 640px) {
-  .hero-section__title {
-    gap: 10px;
-    font-size: 1.8rem;
+  .home-page {
+    gap: var(--space-8);
   }
 
-  .hero-section__title-logo {
-    width: 40px;
-    height: 40px;
+  .hero__inner {
+    gap: var(--space-3);
   }
 
-  .hero-section__composer {
-    padding: 16px;
-    border-radius: 12px;
+  .hero__subtitle {
+    font-size: var(--font-size-base);
   }
 
-  .home-page__panels {
-    padding: 0 14px 20px;
+  .composer {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+  }
+
+  .composer__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .composer__submit {
+    width: 100%;
   }
 }
 </style>
